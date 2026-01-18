@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import LoginDialog from './LoginDialog';
 import {
   DropdownMenu,
@@ -29,6 +30,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       : 'light';
   });
   
+    const navigate = useNavigate();
+    const handleMyAccount = () => {
+      navigate('/');
+    }
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -88,7 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel onClick={handleMyAccount} className='cursor-pointer'>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />

@@ -207,6 +207,12 @@ export const pdfApi = {
       throw new Error('Failed to generate PDF');
     }
 
+    // Check if response is actually a PDF
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/pdf')) {
+      throw new Error('Backend PDF generation not implemented, falling back to client-side');
+    }
+
     return response.blob();
   },
 };

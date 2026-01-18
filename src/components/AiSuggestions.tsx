@@ -2,73 +2,67 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Sparkles, ThumbsUp, ThumbsDown, LightbulbIcon, RefreshCw } from 'lucide-react';
+import { Sparkles, ThumbsUp, ThumbsDown, LightbulbIcon, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from './ui/use-toast';
+import { generateATSSuggestions, calculateATSScore, type ATSuggestion } from '../lib/atsSuggestions';
+import { Badge } from './ui/badge';
 
 interface AiSuggestionsProps {
   resumeData: any;
   onApplySuggestion: (field: string, value: string) => void;
 }
 
+interface ExtendedSuggestion extends ATSuggestion {
+  applied: boolean;
+}
+
 const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySuggestion }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<Array<{field: string, value: string, applied: boolean}>>([]);
+  const [suggestions, setSuggestions] = useState<ExtendedSuggestion[]>([]);
+  const [atsScore, setAtsScore] = useState<{ score: number; feedback: string[] } | null>(null);
 
-  // Mock function to simulate AI suggestions
-  const generateSuggestions = () => {
+  // Generate ATS-friendly suggestions using rule-based checks and optional AI
+  const generateSuggestions = async () => {
     setLoading(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      const newSuggestions = [];
+    try {
+      // Calculate ATS score (now async to support dataset-based scoring)
+      const score = await calculateATSScore(resumeData);
+      setAtsScore(score);
       
-      // Check if summary is empty or short
-      if (!resumeData.personalInfo.summary || resumeData.personalInfo.summary.length < 50) {
-        newSuggestions.push({
-          field: 'summary',
-          value: "Detail-oriented software engineer with 5+ years of experience developing user-focused applications using Java, Spring Boot, and React. Proven track record of improving application performance and implementing innovative solutions that meet business needs.",
-          applied: false
-        });
-      }
+      // Generate suggestions
+      const atsSuggestions = await generateATSSuggestions(resumeData);
       
-      // Check for skills suggestions
-      const techStack = ["Java", "Spring Boot", "React.js", "HTML", "CSS", "MongoDB"];
-      const existingSkills = resumeData.skills.map(s => s.name.toLowerCase());
+      // Convert to extended format
+      const extendedSuggestions: ExtendedSuggestion[] = atsSuggestions.map(s => ({
+        ...s,
+        applied: false
+      }));
       
-      for (const tech of techStack) {
-        if (!existingSkills.some(skill => skill.toLowerCase().includes(tech.toLowerCase()))) {
-          newSuggestions.push({
-            field: 'skill',
-            value: tech,
-            applied: false
-          });
-          break;
-        }
-      }
+      setSuggestions(extendedSuggestions);
       
-      // Experience description suggestions
-      if (resumeData.experience.some(exp => !exp.description || exp.description.length < 30)) {
-        const expIndex = resumeData.experience.findIndex(exp => !exp.description || exp.description.length < 30);
-        if (expIndex !== -1 && resumeData.experience[expIndex].title.toLowerCase().includes("developer")) {
-          newSuggestions.push({
-            field: `experience-${expIndex}-description`,
-            value: "Led development of RESTful APIs using Spring Boot, reducing response time by 30%. Collaborated with cross-functional teams to implement features that increased user engagement by 25%.",
-            applied: false
-          });
-        }
-      }
-      
-      setSuggestions(newSuggestions);
-      setLoading(false);
-      
-      if (newSuggestions.length === 0) {
+      if (extendedSuggestions.length === 0) {
         toast({
-          title: "No suggestions available",
-          description: "Your resume looks good! We don't have any suggestions at this time.",
+          title: "Great job!",
+          description: `Your resume scored ${score.score}/100 on ATS compatibility. Keep up the good work!`,
+        });
+      } else {
+        toast({
+          title: "Suggestions generated",
+          description: `Found ${extendedSuggestions.length} suggestion${extendedSuggestions.length > 1 ? 's' : ''} to improve your ATS score (${score.score}/100)`,
         });
       }
-    }, 1500);
+    } catch (error) {
+      console.error('Error generating suggestions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate suggestions. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApplySuggestion = (index: number) => {
@@ -82,7 +76,8 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
     } else if (suggestion.field.startsWith('experience-')) {
       const parts = suggestion.field.split('-');
       const expIndex = parseInt(parts[1]);
-      onApplySuggestion(`experience-${expIndex}-description`, suggestion.value);
+      const fieldKey = parts.length === 3 ? `${parts[0]}-${parts[1]}-${parts[2]}` : `${parts[0]}-${parts[1]}-description`;
+      onApplySuggestion(fieldKey, suggestion.value);
     }
     
     // Mark as applied
@@ -92,7 +87,7 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
     
     toast({
       title: "Suggestion applied",
-      description: "The AI suggestion has been added to your resume.",
+      description: "The ATS-friendly suggestion has been added to your resume.",
     });
   };
 
@@ -112,14 +107,16 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
           <Sparkles className="h-5 w-5 text-resume-primary" />
           <span>AI Resume Assistant</span>
         </CardTitle>
-        <CardDescription>Get personalized suggestions to enhance your resume</CardDescription>
+        <CardDescription>Get free ATS-friendly suggestions to optimize your resume</CardDescription>
       </CardHeader>
       <CardContent>
         {suggestions.length === 0 ? (
           <div className="text-center py-6">
             <LightbulbIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <h3 className="text-lg font-medium mb-2">Get Smart Suggestions</h3>
-            <p className="text-muted-foreground mb-4">Let our AI analyze your resume and suggest improvements to make it stand out.</p>
+            <h3 className="text-lg font-medium mb-2">Get ATS-Friendly Suggestions</h3>
+            <p className="text-muted-foreground mb-4">
+              Our free analysis uses rule-based checks and AI to identify improvements for better ATS compatibility.
+            </p>
             <Button 
               onClick={generateSuggestions} 
               className="bg-resume-primary hover:bg-resume-secondary"
@@ -128,24 +125,51 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
               {loading ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing...
+                  Analyzing Resume...
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Suggestions
+                  Analyze & Generate Suggestions
                 </>
               )}
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
+            {/* ATS Score Display */}
+            {atsScore && (
+              <Card className="bg-accent border-accent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {atsScore.score >= 80 ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      )}
+                      <span className="font-medium">ATS Compatibility Score</span>
+                    </div>
+                    <Badge variant={atsScore.score >= 80 ? "default" : atsScore.score >= 60 ? "secondary" : "destructive"}>
+                      {atsScore.score}/100
+                    </Badge>
+                  </div>
+                  {atsScore.feedback.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{atsScore.feedback[0]}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Personalized Suggestions</h3>
+              <h3 className="font-medium">ATS-Friendly Suggestions</h3>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => setSuggestions([])}
+                onClick={() => {
+                  setSuggestions([]);
+                  setAtsScore(null);
+                }}
                 className="text-xs"
               >
                 Clear All
@@ -153,15 +177,27 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
             </div>
             
             {suggestions.map((suggestion, index) => (
-              <Card key={index} className="bg-accent border-accent">
+              <Card key={index} className={`bg-accent border-accent ${suggestion.priority === 'high' ? 'border-l-4 border-l-orange-500' : ''}`}>
                 <CardContent className="p-4">
-                  <div className="mb-2">
-                    <span className="font-medium text-sm">
-                      {suggestion.field === 'summary' && 'Professional Summary'}
-                      {suggestion.field === 'skill' && 'Add Missing Skill'}
-                      {suggestion.field.startsWith('experience-') && 'Experience Description'}
-                    </span>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {suggestion.type === 'summary' && 'Professional Summary'}
+                        {suggestion.type === 'skill' && 'Add Missing Skill'}
+                        {suggestion.type === 'experience' && 'Experience Description'}
+                        {suggestion.type === 'education' && 'Education Details'}
+                        {suggestion.type === 'format' && 'Formatting Issue'}
+                        {suggestion.type === 'keyword' && 'Keyword Optimization'}
+                      </span>
+                      <Badge 
+                        variant={suggestion.priority === 'high' ? 'destructive' : suggestion.priority === 'medium' ? 'secondary' : 'outline'}
+                        className="text-xs"
+                      >
+                        {suggestion.priority}
+                      </Badge>
+                    </div>
                   </div>
+                  <p className="text-xs text-muted-foreground mb-2">{suggestion.reason}</p>
                   <p className="text-sm mb-3">{suggestion.value}</p>
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
