@@ -8,7 +8,7 @@ interface ResumePreviewProps {
 }
 
 const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
-  const { personalInfo, experience, education, skills, projects } = resumeData;
+  const { personalInfo, experience, education, skills, projects, achievements = [] } = resumeData;
 
   return (
     <Card className="w-full shadow-lg border-t-4 border-t-resume-primary resume-preview bg-white">
@@ -129,6 +129,35 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
                       <p className="text-sm mt-1">
                         <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-resume-primary hover:underline">
                           View Project
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Achievements Section */}
+        {achievements && achievements.length > 0 && achievements.some(achievement => achievement.name) && (
+          <div className="resume-section">
+            <h2 className="text-lg font-semibold text-resume-primary mb-3">ACHIEVEMENTS</h2>
+            <div className="space-y-4">
+              {achievements.map((achievement, index) => (
+                achievement.name && (
+                  <div key={achievement.id || index} className="pb-2">
+                    <div>
+                      <h3 className="font-medium">{achievement.name}</h3>
+                      {achievement.technologies && (
+                        <p className="text-sm text-muted-foreground">{achievement.technologies}</p>
+                      )}
+                    </div>
+                    {achievement.description && <p className="text-sm mt-1">{achievement.description}</p>}
+                    {achievement.url && (
+                      <p className="text-sm mt-1">
+                        <a href={achievement.url} target="_blank" rel="noopener noreferrer" className="text-resume-primary hover:underline">
+                          View Achievement
                         </a>
                       </p>
                     )}

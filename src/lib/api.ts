@@ -70,6 +70,14 @@ export interface Project {
   url?: string;
 }
 
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  technologies: string;
+  url?: string;
+}
+
 export interface Resume {
   id?: string;
   userId?: string;
@@ -82,6 +90,7 @@ export interface Resume {
   education: Education[];
   skills: Skill[];
   projects: Project[];
+  achievements: Achievement[];
 }
 
 // Get auth token from localStorage

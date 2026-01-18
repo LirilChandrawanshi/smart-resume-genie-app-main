@@ -24,6 +24,7 @@ public class Resume {
     private List<Education> education = new ArrayList<>();
     private List<Skill> skills = new ArrayList<>();
     private List<Project> projects = new ArrayList<>();
+    private List<Achievement> achievements = new ArrayList<>(); 
     
     @Data
     public static class PersonalInfo {
@@ -72,6 +73,14 @@ public class Resume {
         private String technologies;
         private String startDate;
         private String endDate;
+        private String url;
+    }
+     @Data
+    public static class Achievement {
+        private String id;
+        private String name;
+        private String description;
+        private String technologies;
         private String url;
     }
 }

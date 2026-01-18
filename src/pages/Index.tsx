@@ -62,6 +62,13 @@ interface ResumeData {
     endDate: string;
     url?: string;
   }[];
+  achievements: {
+    id: string;
+    name: string;
+    description: string;
+    technologies: string;
+    url?: string;
+  }[];
 }
 
 const Index = () => {
@@ -94,6 +101,9 @@ const Index = () => {
     ],
     projects: [
       { id: '1', name: '', description: '', technologies: '', startDate: '', endDate: '', url: '' }
+    ],
+    achievements: [
+      { id: '1', name: '', description: '', technologies: '', url: '' }
     ]
   };
   

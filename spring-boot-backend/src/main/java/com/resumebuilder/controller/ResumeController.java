@@ -100,6 +100,7 @@ public class ResumeController {
             existingResume.setEducation(resume.getEducation());
             existingResume.setSkills(resume.getSkills());
             existingResume.setProjects(resume.getProjects());
+            existingResume.setAchievements(resume.getAchievements());
             existingResume.setTemplate(resume.getTemplate());
             existingResume.setUpdatedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
             

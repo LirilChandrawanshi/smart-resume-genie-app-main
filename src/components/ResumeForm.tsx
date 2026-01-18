@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { PlusCircle, Trash2, BriefcaseIcon, GraduationCapIcon, AwardIcon, User, FolderIcon } from 'lucide-react';
+import { PlusCircle, Trash2, BriefcaseIcon, GraduationCapIcon, AwardIcon, User, FolderIcon, TrophyIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface FormSectionProps {
@@ -50,15 +50,30 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
     ],
     projects: [
       { id: '1', name: '', description: '', technologies: '', startDate: '', endDate: '', url: '' }
+    ],
+    achievements: [
+      { id: '1', name: '', description: '', technologies: '', url: '' }
     ]
   };
 
-  const [resumeData, setResumeData] = useState(initialData || defaultResumeData);
+  const [resumeData, setResumeData] = useState(() => {
+    const data = initialData || defaultResumeData;
+    // Ensure achievements array exists
+    if (!data.achievements) {
+      data.achievements = [{ id: '1', name: '', description: '', technologies: '', url: '' }];
+    }
+    return data;
+  });
 
   // Update form when initialData changes
   useEffect(() => {
     if (initialData) {
-      setResumeData(initialData);
+      const data = { ...initialData };
+      // Ensure achievements array exists
+      if (!data.achievements) {
+        data.achievements = [{ id: '1', name: '', description: '', technologies: '', url: '' }];
+      }
+      setResumeData(data);
     }
   }, [initialData]);
 
@@ -144,6 +159,22 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
     onUpdateResume(updatedData);
   };
 
+  const handleAchievementChange = (index: number, field: string, value: string) => {
+    const updatedAchievements = [...resumeData.achievements];
+    updatedAchievements[index] = {
+      ...updatedAchievements[index],
+      [field]: value
+    };
+    
+    const updatedData = {
+      ...resumeData,
+      achievements: updatedAchievements
+    };
+    
+    setResumeData(updatedData);
+    onUpdateResume(updatedData);
+  };
+
   const addExperience = () => {
     const updatedData = {
       ...resumeData,
@@ -216,6 +247,24 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
     onUpdateResume(updatedData);
   };
 
+  const addAchievement = () => {
+    const updatedData = {
+      ...resumeData,
+      achievements: [
+        ...resumeData.achievements,
+        { 
+          id: `achievement-${Date.now()}`, 
+          name: '', 
+          description: '', 
+          technologies: '', 
+          url: '' 
+        }
+      ]
+    };
+    setResumeData(updatedData);
+    onUpdateResume(updatedData);
+  };
+
   const removeExperience = (index: number) => {
     if (resumeData.experience.length === 1) return;
     
@@ -268,6 +317,19 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
     onUpdateResume(updatedData);
   };
 
+  const removeAchievement = (index: number) => {
+    if (resumeData.achievements.length === 1) return;
+    
+    const updatedAchievements = resumeData.achievements.filter((_, i) => i !== index);
+    const updatedData = {
+      ...resumeData,
+      achievements: updatedAchievements
+    };
+    
+    setResumeData(updatedData);
+    onUpdateResume(updatedData);
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -275,7 +337,7 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className="grid grid-cols-6 mb-4">
             <TabsTrigger value="personal" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Personal</span>
@@ -295,6 +357,10 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
             <TabsTrigger value="projects" className="flex items-center gap-2">
               <FolderIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Projects</span>
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="flex items-center gap-2">
+              <TrophyIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Achievements</span>
             </TabsTrigger>
           </TabsList>
           
@@ -655,6 +721,70 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
               <Button variant="outline" className="w-full" onClick={addProject}>
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Project
+              </Button>
+            </FormSection>
+          </TabsContent>
+          
+          <TabsContent value="achievements" className="space-y-6 animate-fade-in">
+            <FormSection title="Achievements">
+              {resumeData.achievements.map((achievement, index) => (
+                <Card key={achievement.id} className="relative">
+                  <CardContent className="pt-6">
+                    {resumeData.achievements.length > 1 && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute right-2 top-2" 
+                        onClick={() => removeAchievement(index)}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`achievement-name-${index}`}>Achievement Name</Label>
+                        <Input 
+                          id={`achievement-name-${index}`} 
+                          placeholder="Hackathon Winner" 
+                          value={achievement.name}
+                          onChange={(e) => handleAchievementChange(index, 'name', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`achievement-url-${index}`}>Achievement URL</Label>
+                        <Input 
+                          id={`achievement-url-${index}`} 
+                          placeholder="https://example.com/achievement" 
+                          value={achievement.url}
+                          onChange={(e) => handleAchievementChange(index, 'url', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`achievement-tech-${index}`}>Technologies Used</Label>
+                        <Input 
+                          id={`achievement-tech-${index}`} 
+                          placeholder="React, Node.js, MongoDB" 
+                          value={achievement.technologies}
+                          onChange={(e) => handleAchievementChange(index, 'technologies', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor={`achievement-desc-${index}`}>Description</Label>
+                        <Textarea 
+                          id={`achievement-desc-${index}`} 
+                          placeholder="Describe the achievement and its significance..." 
+                          rows={3}
+                          value={achievement.description}
+                          onChange={(e) => handleAchievementChange(index, 'description', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              <Button variant="outline" className="w-full" onClick={addAchievement}>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Achievement
               </Button>
             </FormSection>
           </TabsContent>
