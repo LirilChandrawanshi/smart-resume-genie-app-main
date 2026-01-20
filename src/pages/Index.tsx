@@ -160,6 +160,9 @@ const Index = () => {
         projects: resume.projects && resume.projects.length > 0 
           ? resume.projects 
           : initialResumeData.projects,
+        achievements: resume.achievements && resume.achievements.length > 0 
+          ? resume.achievements 
+          : initialResumeData.achievements,
       });
       if (resume.template) {
         setSelectedTemplate(resume.template);
