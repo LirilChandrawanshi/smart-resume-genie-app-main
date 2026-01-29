@@ -57,7 +57,7 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
           }
         }
         
-        // Fallback to client-side PDF generation
+        // Fallback to client-side PDF generation (scale to fit one A4 page)
         const resumeElement = document.querySelector('.resume-preview');
         
         if (!resumeElement) {
@@ -77,8 +77,19 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
           format: 'a4'
         });
         
-        const imgWidth = 210;
-        const imgHeight = canvas.height * imgWidth / canvas.width;
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const aspect = canvas.width / canvas.height;
+        const pageAspect = pageWidth / pageHeight;
+        let imgWidth: number;
+        let imgHeight: number;
+        if (aspect > pageAspect) {
+          imgWidth = pageWidth;
+          imgHeight = pageWidth / aspect;
+        } else {
+          imgHeight = pageHeight;
+          imgWidth = pageHeight * aspect;
+        }
         const imgData = canvas.toDataURL('image/png');
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
         pdf.save(`${resumeData.personalInfo.name || 'Resume'}.pdf`);

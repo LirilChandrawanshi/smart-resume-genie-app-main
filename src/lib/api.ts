@@ -32,6 +32,8 @@ export interface PersonalInfo {
   phone: string;
   location: string;
   summary: string;
+  linkedin?: string;
+  github?: string;
 }
 
 export interface Experience {
@@ -199,6 +201,25 @@ export const resumeApi = {
 
   getTemplates: async (): Promise<string[]> => {
     return apiRequest<string[]>('/resumes/templates');
+  },
+};
+
+// Template list from backend (file-discovered LaTeX + HTML-only)
+export interface TemplateInfo {
+  id: string;
+  name: string;
+  description: string;
+  hasLatex?: boolean;
+}
+
+export interface TemplatesListResponse {
+  templates: TemplateInfo[];
+  total: number;
+}
+
+export const templatesApi = {
+  getTemplates: async (): Promise<TemplatesListResponse> => {
+    return apiRequest<TemplatesListResponse>('/templates');
   },
 };
 

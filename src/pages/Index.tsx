@@ -72,8 +72,6 @@ interface ResumeData {
   }[];
 }
 
-const VALID_TEMPLATE_IDS = ['default', 'jake', 'modern', 'classic', 'minimalist', 'creative', 'professional', 'academic'];
-
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -99,7 +97,7 @@ const Index = () => {
   useEffect(() => {
     const templateFromUrl = searchParams.get('template');
     const resumeIdFromUrl = searchParams.get('resumeId');
-    const hasTemplate = templateFromUrl && VALID_TEMPLATE_IDS.includes(templateFromUrl);
+    const hasTemplate = templateFromUrl != null && templateFromUrl.trim() !== '';
     const hasResumeId = resumeIdFromUrl && resumeIdFromUrl.trim() !== '';
 
     if (!hasTemplate && !hasResumeId) return;

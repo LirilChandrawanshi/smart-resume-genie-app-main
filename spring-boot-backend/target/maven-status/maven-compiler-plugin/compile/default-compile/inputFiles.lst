@@ -7,6 +7,7 @@
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/payload/response/AdminResumeResponse.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/repository/ResumeRepository.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/security/jwt/AuthTokenFilter.java
+/Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/service/LatexPdfService.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/payload/response/JwtResponse.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/controller/AuthController.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/payload/response/AdminStatsResponse.java
@@ -23,5 +24,6 @@
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/ResumeBuilderApplication.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/payload/response/MessageResponse.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/model/User.java
+/Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/service/LatexTemplateService.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/repository/UserRepository.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/model/Resume.java

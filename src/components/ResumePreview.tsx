@@ -26,8 +26,10 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTempl
   const styles = getTemplateStyles(selectedTemplate);
 
   return (
-    <Card className={`w-full shadow-lg border-t-4 resume-preview bg-white ${styles.border} ${styles.font}`}>
-      <CardContent className="p-6 space-y-6">
+    <div className="resume-preview-wrapper">
+      <p className="text-xs text-muted-foreground mb-1">PDF downloads as one page (content scaled to fit).</p>
+      <Card className={`w-full shadow-lg border-t-4 resume-preview bg-white ${styles.border} ${styles.font}`}>
+      <CardContent className="p-5 space-y-3">
         {/* Header Section */}
         <div className={`text-center pb-4 border-b ${styles.headerBg || ''}`}>
           <h1 className="text-2xl font-bold mb-1">{personalInfo.name || 'Your Name'}</h1>
@@ -59,7 +61,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTempl
         {/* Summary Section */}
         {personalInfo.summary && (
           <div className="resume-section">
-            <h2 className={`text-lg font-semibold mb-2 ${styles.heading}`}>PROFESSIONAL SUMMARY</h2>
+            <h2 className={`text-base font-semibold mb-2 ${styles.heading}`}>PROFESSIONAL SUMMARY</h2>
             <p className="text-sm">{personalInfo.summary}</p>
           </div>
         )}
@@ -67,7 +69,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTempl
         {/* Experience Section */}
         {experience.some(exp => exp.title || exp.company) && (
           <div className="resume-section">
-            <h2 className={`text-lg font-semibold mb-3 ${styles.heading}`}>EXPERIENCE</h2>
+            <h2 className={`text-base font-semibold mb-3 ${styles.heading}`}>EXPERIENCE</h2>
             <div className="space-y-4">
               {experience.map((exp, index) => (
                 (exp.title || exp.company) && (
@@ -206,6 +208,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTempl
         )}
       </CardContent>
     </Card>
+    </div>
   );
 };
 

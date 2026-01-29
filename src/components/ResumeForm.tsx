@@ -38,6 +38,8 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
       phone: '',
       location: '',
       summary: '',
+      linkedin: '',
+      github: '',
     },
     experience: [
       { id: '1', title: '', company: '', location: '', startDate: '', endDate: '', description: '' }
@@ -415,6 +417,26 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
                     name="location" 
                     placeholder="New York, NY" 
                     value={resumeData.personalInfo.location}
+                    onChange={handlePersonalInfoChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">LinkedIn (username only, e.g. johndoe)</Label>
+                  <Input 
+                    id="linkedin" 
+                    name="linkedin" 
+                    placeholder="johndoe" 
+                    value={resumeData.personalInfo.linkedin ?? ''}
+                    onChange={handlePersonalInfoChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="github">GitHub (username only, e.g. johndoe)</Label>
+                  <Input 
+                    id="github" 
+                    name="github" 
+                    placeholder="johndoe" 
+                    value={resumeData.personalInfo.github ?? ''}
                     onChange={handlePersonalInfoChange}
                   />
                 </div>
