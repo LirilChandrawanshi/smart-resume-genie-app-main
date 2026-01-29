@@ -1,10 +1,8 @@
-
 import React from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const templates = [
   {
@@ -45,7 +43,14 @@ const templates = [
   }
 ];
 
+const RESUMED_ID_STORAGE_KEY = 'resumeBuilder_currentResumeId';
+
 const Templates = () => {
+  const [searchParams] = useSearchParams();
+  const resumeIdFromUrl = searchParams.get('resumeId') || '';
+  const resumeIdFromStorage = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(RESUMED_ID_STORAGE_KEY) : null;
+  const resumeId = resumeIdFromUrl || resumeIdFromStorage || '';
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12">
@@ -57,32 +62,35 @@ const Templates = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
-            <Card key={template.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className={`${template.color} h-12`}></div>
-              <div className="p-2">
-                <div className="bg-white p-4 space-y-1">
-                  <div className="w-full h-3 bg-gray-200 rounded"></div>
-                  <div className="w-3/4 h-3 bg-gray-200 rounded"></div>
-                  <div className="w-1/2 h-3 bg-gray-200 rounded"></div>
-                  <div className="mt-4 space-y-1">
-                    <div className="w-full h-2 bg-gray-100 rounded"></div>
-                    <div className="w-full h-2 bg-gray-100 rounded"></div>
-                    <div className="w-3/4 h-2 bg-gray-100 rounded"></div>
+          {templates.map((template) => {
+            const builderUrl = resumeId ? `/?template=${template.id}&resumeId=${resumeId}` : `/?template=${template.id}`;
+            return (
+              <Card key={template.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className={`${template.color} h-12`}></div>
+                <div className="p-2">
+                  <div className="bg-white p-4 space-y-1">
+                    <div className="w-full h-3 bg-gray-200 rounded"></div>
+                    <div className="w-3/4 h-3 bg-gray-200 rounded"></div>
+                    <div className="w-1/2 h-3 bg-gray-200 rounded"></div>
+                    <div className="mt-4 space-y-1">
+                      <div className="w-full h-2 bg-gray-100 rounded"></div>
+                      <div className="w-full h-2 bg-gray-100 rounded"></div>
+                      <div className="w-3/4 h-2 bg-gray-100 rounded"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg mb-2">{template.name}</h3>
-                <p className="text-muted-foreground text-sm mb-4">{template.description}</p>
-                <Link to="/?template=${template.id}">
-                  <Button className="w-full bg-resume-primary hover:bg-resume-secondary">
-                    Use This Template
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg mb-2">{template.name}</h3>
+                  <p className="text-muted-foreground text-sm mb-4">{template.description}</p>
+                  <Link to={builderUrl}>
+                    <Button className="w-full bg-resume-primary hover:bg-resume-secondary">
+                      Use This Template
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </Layout>

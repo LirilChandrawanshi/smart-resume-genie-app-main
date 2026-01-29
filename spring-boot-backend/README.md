@@ -23,6 +23,7 @@ This is a Spring Boot backend for the Resume Builder application.
 ### Authentication
 - POST /api/auth/signup - Register a new user
 - POST /api/auth/signin - Login a user
+- GET /api/auth/seed-admin - Create or reset admin user (see Admin panel below)
 
 ### Resumes
 - GET /api/resumes - Get all resumes for the current user
@@ -38,6 +39,26 @@ This is a Spring Boot backend for the Resume Builder application.
 
 ### PDF Generation
 - GET /api/pdf/{id} - Generate PDF for a specific resume
+
+### Admin (ROLE_ADMIN only)
+- GET /api/admin/stats - Dashboard stats (total users, resumes)
+- GET /api/admin/users - List all users
+- GET /api/admin/resumes - List all resumes (optional ?userId=)
+
+## Admin panel and seed admin user
+
+If you get **401 Unauthorized** or **Invalid username or password** when logging in as admin:
+
+1. In `src/main/resources/application.properties` set:
+   ```
+   resumebuilder.seed-admin=true
+   ```
+2. Restart the Spring Boot application.
+3. In a browser or with curl, open: **http://localhost:8080/api/auth/seed-admin**
+   - If admin user already exists: password is reset to `admin123` and roles set to ROLE_USER + ROLE_ADMIN.
+   - If admin does not exist: admin user is created with username `admin`, password `admin123`, and roles ROLE_USER + ROLE_ADMIN.
+4. Set `resumebuilder.seed-admin=false` again in `application.properties` and restart (recommended for security).
+5. Log in in the app with **username: admin**, **password: admin123**.
 
 ## Environment Setup
 

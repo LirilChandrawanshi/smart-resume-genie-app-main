@@ -82,6 +82,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link to="/about">
                   <Button variant="ghost" size="sm">About</Button>
                 </Link>
+                {user?.roles?.includes('ROLE_ADMIN') && (
+                  <Link to="/admin">
+                    <Button variant="ghost" size="sm">Admin</Button>
+                  </Link>
+                )}
               </>
             )}
             {isAuthenticated ? (

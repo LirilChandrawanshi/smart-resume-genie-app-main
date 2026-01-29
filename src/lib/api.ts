@@ -202,6 +202,117 @@ export const resumeApi = {
   },
 };
 
+// Admin API types
+export interface AdminStatsResponse {
+  totalUsers: number;
+  totalResumes: number;
+}
+
+export interface AdminStatsExtendedResponse {
+  totalUsers: number;
+  totalResumes: number;
+  resumesByTemplate: Record<string, number>;
+}
+
+export interface AdminUserResponse {
+  id: string;
+  username: string;
+  email: string;
+  roles: string[];
+  resumeCount: number;
+}
+
+export interface AdminResumeResponse {
+  id: string;
+  name: string;
+  userId: string;
+  ownerUsername: string;
+  template: string;
+  updatedAt: string;
+}
+
+export interface AdminPageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
+// Admin API
+export const adminApi = {
+  getStats: async (): Promise<AdminStatsResponse> => {
+    return apiRequest<AdminStatsResponse>('/admin/stats');
+  },
+
+  getStatsExtended: async (): Promise<AdminStatsExtendedResponse> => {
+    return apiRequest<AdminStatsExtendedResponse>('/admin/stats/extended');
+  },
+
+  getUsers: async (params?: { page?: number; size?: number; search?: string }): Promise<AdminPageResponse<AdminUserResponse>> => {
+    const sp = new URLSearchParams();
+    if (params?.page != null) sp.set('page', String(params.page));
+    if (params?.size != null) sp.set('size', String(params.size));
+    if (params?.search != null && params.search.trim() !== '') sp.set('search', params.search.trim());
+    const q = sp.toString();
+    return apiRequest<AdminPageResponse<AdminUserResponse>>(`/admin/users${q ? `?${q}` : ''}`);
+  },
+
+  getResumes: async (params?: { userId?: string; page?: number; size?: number }): Promise<AdminPageResponse<AdminResumeResponse>> => {
+    const sp = new URLSearchParams();
+    if (params?.userId) sp.set('userId', params.userId);
+    if (params?.page != null) sp.set('page', String(params.page));
+    if (params?.size != null) sp.set('size', String(params.size));
+    const q = sp.toString();
+    return apiRequest<AdminPageResponse<AdminResumeResponse>>(`/admin/resumes${q ? `?${q}` : ''}`);
+  },
+
+  getResumeById: async (id: string): Promise<Resume> => {
+    return apiRequest<Resume>(`/admin/resumes/${id}`);
+  },
+
+  deleteUser: async (id: string): Promise<MessageResponse> => {
+    return apiRequest<MessageResponse>(`/admin/users/${id}`, { method: 'DELETE' });
+  },
+
+  deleteResume: async (id: string): Promise<MessageResponse> => {
+    return apiRequest<MessageResponse>(`/admin/resumes/${id}`, { method: 'DELETE' });
+  },
+
+  updateUserRoles: async (id: string, roles: string[]): Promise<MessageResponse> => {
+    return apiRequest<MessageResponse>(`/admin/users/${id}/roles`, {
+      method: 'PATCH',
+      body: JSON.stringify({ roles }),
+    });
+  },
+
+  exportUsersCsv: async (): Promise<void> => {
+    const token = getAuthToken();
+    const res = await fetch(`${API_BASE_URL}/admin/users/export`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error('Export failed');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'users.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+
+  exportResumesCsv: async (userId?: string): Promise<void> => {
+    const token = getAuthToken();
+    const url = userId ? `${API_BASE_URL}/admin/resumes/export?userId=${encodeURIComponent(userId)}` : `${API_BASE_URL}/admin/resumes/export`;
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error('Export failed');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'resumes.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+};
+
 // PDF API
 export const pdfApi = {
   generate: async (id: string): Promise<Blob> => {

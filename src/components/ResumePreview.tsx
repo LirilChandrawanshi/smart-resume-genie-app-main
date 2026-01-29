@@ -1,20 +1,35 @@
-
 import React from 'react';
 import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 
 interface ResumePreviewProps {
   resumeData: any;
+  selectedTemplate?: string;
 }
 
-const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
+// Template-specific accent colors and styles
+const TEMPLATE_STYLES: Record<string, { border: string; heading: string; link: string; progress: string; headerBg?: string; font?: string }> = {
+  default: { border: 'border-t-blue-500', heading: 'text-blue-600', link: 'text-blue-600 hover:underline', progress: '[&_.bg-primary]:!bg-blue-500', font: 'font-sans' },
+  jake: { border: 'border-t-indigo-600', heading: 'text-indigo-600', link: 'text-indigo-600 hover:underline', progress: '[&_.bg-primary]:!bg-indigo-600', headerBg: 'bg-indigo-50', font: 'font-sans' },
+  modern: { border: 'border-t-slate-600', heading: 'text-slate-700 uppercase tracking-wider', link: 'text-slate-600 hover:underline', progress: '[&_.bg-primary]:!bg-slate-600', font: 'font-sans' },
+  classic: { border: 'border-t-gray-700', heading: 'text-gray-800 font-serif', link: 'text-gray-700 hover:underline', progress: '[&_.bg-primary]:!bg-gray-700', font: 'font-serif' },
+  minimalist: { border: 'border-t-slate-400', heading: 'text-slate-600 text-sm font-medium tracking-widest', link: 'text-slate-500 hover:underline', progress: '[&_.bg-primary]:!bg-slate-400', font: 'font-sans' },
+  creative: { border: 'border-t-purple-600', heading: 'text-purple-600', link: 'text-purple-600 hover:underline', progress: '[&_.bg-primary]:!bg-purple-500', headerBg: 'bg-purple-50', font: 'font-sans' },
+  professional: { border: 'border-t-emerald-600', heading: 'text-emerald-700', link: 'text-emerald-600 hover:underline', progress: '[&_.bg-primary]:!bg-emerald-600', font: 'font-sans' },
+  academic: { border: 'border-t-red-800', heading: 'text-red-800', link: 'text-red-700 hover:underline', progress: '[&_.bg-primary]:!bg-red-700', font: 'font-sans' },
+};
+
+const getTemplateStyles = (template: string) => TEMPLATE_STYLES[template] || TEMPLATE_STYLES.default;
+
+const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTemplate = 'default' }) => {
   const { personalInfo, experience, education, skills, projects, achievements = [] } = resumeData;
+  const styles = getTemplateStyles(selectedTemplate);
 
   return (
-    <Card className="w-full shadow-lg border-t-4 border-t-resume-primary resume-preview bg-white">
+    <Card className={`w-full shadow-lg border-t-4 resume-preview bg-white ${styles.border} ${styles.font}`}>
       <CardContent className="p-6 space-y-6">
         {/* Header Section */}
-        <div className="text-center pb-4 border-b">
+        <div className={`text-center pb-4 border-b ${styles.headerBg || ''}`}>
           <h1 className="text-2xl font-bold mb-1">{personalInfo.name || 'Your Name'}</h1>
           <p className="text-lg text-muted-foreground">{personalInfo.title || 'Professional Title'}</p>
           
@@ -44,7 +59,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
         {/* Summary Section */}
         {personalInfo.summary && (
           <div className="resume-section">
-            <h2 className="text-lg font-semibold text-resume-primary mb-2">PROFESSIONAL SUMMARY</h2>
+            <h2 className={`text-lg font-semibold mb-2 ${styles.heading}`}>PROFESSIONAL SUMMARY</h2>
             <p className="text-sm">{personalInfo.summary}</p>
           </div>
         )}
@@ -52,7 +67,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
         {/* Experience Section */}
         {experience.some(exp => exp.title || exp.company) && (
           <div className="resume-section">
-            <h2 className="text-lg font-semibold text-resume-primary mb-3">EXPERIENCE</h2>
+            <h2 className={`text-lg font-semibold mb-3 ${styles.heading}`}>EXPERIENCE</h2>
             <div className="space-y-4">
               {experience.map((exp, index) => (
                 (exp.title || exp.company) && (
@@ -79,7 +94,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
         {/* Education Section */}
         {education.some(edu => edu.degree || edu.school) && (
           <div className="resume-section">
-            <h2 className="text-lg font-semibold text-resume-primary mb-3">EDUCATION</h2>
+            <h2 className={`text-lg font-semibold mb-3 ${styles.heading}`}>EDUCATION</h2>
             <div className="space-y-4">
               {education.map((edu, index) => (
                 (edu.degree || edu.school) && (
@@ -106,7 +121,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
         {/* Projects Section */}
         {projects.some(project => project.name) && (
           <div className="resume-section">
-            <h2 className="text-lg font-semibold text-resume-primary mb-3">PROJECTS</h2>
+            <h2 className={`text-lg font-semibold mb-3 ${styles.heading}`}>PROJECTS</h2>
             <div className="space-y-4">
               {projects.map((project, index) => (
                 project.name && (
@@ -127,37 +142,8 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
                     {project.description && <p className="text-sm mt-1">{project.description}</p>}
                     {project.url && (
                       <p className="text-sm mt-1">
-                        <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-resume-primary hover:underline">
+                        <a href={project.url} target="_blank" rel="noopener noreferrer" className={styles.link}>
                           View Project
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Achievements Section */}
-        {achievements && achievements.length > 0 && achievements.some(achievement => achievement.name) && (
-          <div className="resume-section">
-            <h2 className="text-lg font-semibold text-resume-primary mb-3">ACHIEVEMENTS</h2>
-            <div className="space-y-4">
-              {achievements.map((achievement, index) => (
-                achievement.name && (
-                  <div key={achievement.id || index} className="pb-2">
-                    <div>
-                      <h3 className="font-medium">{achievement.name}</h3>
-                      {achievement.technologies && (
-                        <p className="text-sm text-muted-foreground">{achievement.technologies}</p>
-                      )}
-                    </div>
-                    {achievement.description && <p className="text-sm mt-1">{achievement.description}</p>}
-                    {achievement.url && (
-                      <p className="text-sm mt-1">
-                        <a href={achievement.url} target="_blank" rel="noopener noreferrer" className="text-resume-primary hover:underline">
-                          View Achievement
                         </a>
                       </p>
                     )}
@@ -171,7 +157,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
         {/* Skills Section */}
         {skills.some(skill => skill.name) && (
           <div className="resume-section">
-            <h2 className="text-lg font-semibold text-resume-primary mb-3">SKILLS</h2>
+            <h2 className={`text-lg font-semibold mb-3 ${styles.heading}`}>SKILLS</h2>
             <div className="grid grid-cols-1 gap-2">
               {skills.map((skill, index) => (
                 skill.name && (
@@ -180,7 +166,38 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData }) => {
                       <span>{skill.name}</span>
                       <span>{skill.level}%</span>
                     </div>
-                    <Progress value={parseInt(skill.level)} className="h-2 mt-1" />
+                    <div className={styles.progress}>
+                      <Progress value={parseInt(skill.level)} className="h-2 mt-1" />
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Achievements Section */}
+        {achievements && achievements.length > 0 && achievements.some(achievement => achievement.name) && (
+          <div className="resume-section">
+            <h2 className={`text-lg font-semibold mb-3 ${styles.heading}`}>ACHIEVEMENTS</h2>
+            <div className="space-y-4">
+              {achievements.map((achievement, index) => (
+                achievement.name && (
+                  <div key={achievement.id || index} className="pb-2">
+                    <div>
+                      <h3 className="font-medium">{achievement.name}</h3>
+                      {achievement.technologies && (
+                        <p className="text-sm text-muted-foreground">{achievement.technologies}</p>
+                      )}
+                    </div>
+                    {achievement.description && <p className="text-sm mt-1">{achievement.description}</p>}
+                    {achievement.url && (
+                      <p className="text-sm mt-1">
+                        <a href={achievement.url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                          View Achievement
+                        </a>
+                      </p>
+                    )}
                   </div>
                 )
               ))}

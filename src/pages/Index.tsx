@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ResumeForm from '@/components/ResumeForm';
 import ResumePreview from '@/components/ResumePreview';
@@ -71,15 +72,85 @@ interface ResumeData {
   }[];
 }
 
+const VALID_TEMPLATE_IDS = ['default', 'jake', 'modern', 'classic', 'minimalist', 'creative', 'professional', 'academic'];
+
 const Index = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [showPreview, setShowPreview] = useState(!isMobile);
   const [selectedTemplate, setSelectedTemplate] = useState('default');
   const [currentResumeId, setCurrentResumeId] = useState<string | undefined>();
   const [savedResumes, setSavedResumes] = useState<Resume[]>([]);
   const [isLoadingResumes, setIsLoadingResumes] = useState(false);
+
+  const RESUMED_ID_STORAGE_KEY = 'resumeBuilder_currentResumeId';
+  useEffect(() => {
+    if (currentResumeId) {
+      sessionStorage.setItem(RESUMED_ID_STORAGE_KEY, currentResumeId);
+    } else {
+      sessionStorage.removeItem(RESUMED_ID_STORAGE_KEY);
+    }
+  }, [currentResumeId]);
+
+  // Sync template and resume from URL (e.g. from Templates page "Use This Template" with a resume selected)
+  // Wait for auth to settle so we know whether we can load the resume (auth may restore from localStorage after first paint)
+  useEffect(() => {
+    const templateFromUrl = searchParams.get('template');
+    const resumeIdFromUrl = searchParams.get('resumeId');
+    const hasTemplate = templateFromUrl && VALID_TEMPLATE_IDS.includes(templateFromUrl);
+    const hasResumeId = resumeIdFromUrl && resumeIdFromUrl.trim() !== '';
+
+    if (!hasTemplate && !hasResumeId) return;
+
+    if (hasTemplate) {
+      setSelectedTemplate(templateFromUrl);
+    }
+
+    const clearUrlParams = () => {
+      const next = new URLSearchParams(searchParams);
+      next.delete('template');
+      next.delete('resumeId');
+      setSearchParams(next, { replace: true });
+    };
+
+    if (hasResumeId && isAuthenticated) {
+      resumeApi
+        .getById(resumeIdFromUrl)
+        .then((resume) => {
+          setCurrentResumeId(resume.id);
+          setResumeData({
+            personalInfo: resume.personalInfo || initialResumeData.personalInfo,
+            experience: resume.experience?.length ? resume.experience : initialResumeData.experience,
+            education: resume.education?.length ? resume.education : initialResumeData.education,
+            skills: resume.skills?.length ? resume.skills : initialResumeData.skills,
+            projects: resume.projects?.length ? resume.projects : initialResumeData.projects,
+            achievements: resume.achievements?.length ? resume.achievements : initialResumeData.achievements,
+          });
+          if (hasTemplate) {
+            setSelectedTemplate(templateFromUrl);
+          } else if (resume.template) {
+            setSelectedTemplate(resume.template);
+          }
+        })
+        .catch(() => {
+          toast({
+            title: 'Error loading resume',
+            description: 'Could not load the selected resume. You may need to sign in again.',
+            variant: 'destructive',
+          });
+        })
+        .finally(clearUrlParams);
+    } else if (hasResumeId && !isAuthenticated && !isAuthLoading) {
+      // Auth settled and user is not logged in – can't load resume, clear stale params
+      clearUrlParams();
+    } else if (!hasResumeId) {
+      // Only template in URL, no resume to restore
+      clearUrlParams();
+    }
+    // When hasResumeId && !isAuthenticated && isAuthLoading: do nothing – wait for auth to settle, then effect runs again
+  }, [searchParams, isAuthenticated, isAuthLoading]);
   
   const initialResumeData: ResumeData = {
     personalInfo: {
@@ -306,7 +377,7 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <AiSuggestions resumeData={resumeData} onApplySuggestion={handleApplySuggestion} />
               <div className="space-y-6">
-                <TemplateSelector selectedTemplate={selectedTemplate} onSelectTemplate={setSelectedTemplate} />
+                <TemplateSelector selectedTemplate={selectedTemplate} onSelectTemplate={setSelectedTemplate} currentResumeId={currentResumeId} />
                 <DownloadOptions 
                   resumeData={resumeData} 
                   resumeId={currentResumeId}
@@ -338,7 +409,7 @@ const Index = () => {
                   </Button>
                 </div>
                 <div className="bg-gray-100 p-6 rounded-lg">
-                  <ResumePreview resumeData={resumeData} />
+                  <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
                 </div>
               </div>
             </div>

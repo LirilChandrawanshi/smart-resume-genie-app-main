@@ -65,26 +65,38 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
     }
   };
 
+  // Only summary, skill, and experience-description can be applied to resume state; others are guidance-only
+  const canApplySuggestion = (field: string) =>
+    field === 'summary' ||
+    field === 'skill' ||
+    field.startsWith('experience-');
+
   const handleApplySuggestion = (index: number) => {
     const suggestion = suggestions[index];
-    
+
+    if (!canApplySuggestion(suggestion.field)) {
+      toast({
+        title: "Guidance only",
+        description: "This suggestion is advice to consider; update your resume manually in the form.",
+      });
+      return;
+    }
+
     if (suggestion.field === 'summary') {
       onApplySuggestion('summary', suggestion.value);
     } else if (suggestion.field === 'skill') {
-      // Add as a new skill
       onApplySuggestion('newSkill', suggestion.value);
     } else if (suggestion.field.startsWith('experience-')) {
       const parts = suggestion.field.split('-');
-      const expIndex = parseInt(parts[1]);
       const fieldKey = parts.length === 3 ? `${parts[0]}-${parts[1]}-${parts[2]}` : `${parts[0]}-${parts[1]}-description`;
       onApplySuggestion(fieldKey, suggestion.value);
     }
-    
-    // Mark as applied
+
+    // Mark as applied only when we actually updated resume state
     const updatedSuggestions = [...suggestions];
     updatedSuggestions[index] = { ...updatedSuggestions[index], applied: true };
     setSuggestions(updatedSuggestions);
-    
+
     toast({
       title: "Suggestion applied",
       description: "The ATS-friendly suggestion has been added to your resume.",
@@ -221,10 +233,14 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
                     <Button 
                       size="sm" 
                       onClick={() => handleApplySuggestion(index)}
-                      disabled={suggestion.applied}
-                      className={suggestion.applied ? "bg-green-500 hover:bg-green-600" : ""}
+                      disabled={suggestion.applied && canApplySuggestion(suggestion.field)}
+                      className={suggestion.applied && canApplySuggestion(suggestion.field) ? "bg-green-500 hover:bg-green-600" : ""}
                     >
-                      {suggestion.applied ? "Applied" : "Apply"}
+                      {suggestion.applied && canApplySuggestion(suggestion.field)
+                        ? "Applied"
+                        : canApplySuggestion(suggestion.field)
+                          ? "Apply"
+                          : "Got it"}
                     </Button>
                   </div>
                 </CardContent>

@@ -144,6 +144,7 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
         education: resumeData.education,
         skills: resumeData.skills,
         projects: resumeData.projects,
+        achievements: resumeData.achievements ?? [],
         template: selectedTemplate
       };
 

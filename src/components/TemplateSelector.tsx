@@ -7,6 +7,7 @@ import { CheckCircle2 } from 'lucide-react';
 interface TemplateSelectorProps {
   selectedTemplate: string;
   onSelectTemplate: (template: string) => void;
+  currentResumeId?: string;
 }
 
 const templates = [
@@ -52,13 +53,14 @@ const templates = [
   }
 ];
 
-const TemplateSelector: React.FC<TemplateSelectorProps> = ({ selectedTemplate, onSelectTemplate }) => {
+const TemplateSelector: React.FC<TemplateSelectorProps> = ({ selectedTemplate, onSelectTemplate, currentResumeId }) => {
+  const templatesUrl = currentResumeId ? `/templates?resumeId=${currentResumeId}` : '/templates';
   return (
     <Card className="w-full">
       <CardContent className="p-4">
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-medium">Choose Template</h3>
-          <Button variant="link" size="sm" className="p-0 h-auto text-resume-primary" onClick={() => window.open('/templates', '_blank')}>
+          <Button variant="link" size="sm" className="p-0 h-auto text-resume-primary" onClick={() => window.open(templatesUrl, '_blank')}>
             View all
           </Button>
         </div>

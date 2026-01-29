@@ -11,6 +11,7 @@ import com.resumebuilder.security.jwt.JwtUtils;
 import com.resumebuilder.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -41,6 +42,44 @@ public class AuthController {
 
     @Autowired
     JwtUtils jwtUtils;
+
+    @Value("${resumebuilder.seed-admin:false}")
+    private boolean seedAdminEnabled;
+
+    /**
+     * One-time seed: create or reset admin user (username: admin, password: admin123) with ROLE_USER and ROLE_ADMIN.
+     * Only works when resumebuilder.seed-admin=true in application.properties.
+     * If admin already exists, resets password to admin123 and ensures roles. After use, set resumebuilder.seed-admin=false and restart.
+     */
+    @GetMapping("/seed-admin")
+    public ResponseEntity<?> seedAdmin() {
+        if (!seedAdminEnabled) {
+            return ResponseEntity.notFound().build();
+        }
+        String message;
+        if (userRepository.existsByUsername("admin")) {
+            User admin = userRepository.findByUsername("admin").orElseThrow();
+            admin.setPassword(encoder.encode("admin123"));
+            Set<String> roles = new HashSet<>();
+            roles.add("ROLE_USER");
+            roles.add("ROLE_ADMIN");
+            admin.setRoles(roles);
+            userRepository.save(admin);
+            message = "Admin password reset. Login with username: admin, password: admin123";
+        } else {
+            User admin = new User();
+            admin.setUsername("admin");
+            admin.setEmail("admin@resumebuilder.local");
+            admin.setPassword(encoder.encode("admin123"));
+            Set<String> roles = new HashSet<>();
+            roles.add("ROLE_USER");
+            roles.add("ROLE_ADMIN");
+            admin.setRoles(roles);
+            userRepository.save(admin);
+            message = "Admin user created. Login with username: admin, password: admin123";
+        }
+        return ResponseEntity.ok(new MessageResponse(message));
+    }
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
