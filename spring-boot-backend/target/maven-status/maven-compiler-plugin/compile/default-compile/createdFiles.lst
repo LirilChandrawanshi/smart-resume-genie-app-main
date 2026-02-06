@@ -1,5 +1,9 @@
 com/resumebuilder/security/jwt/AuthEntryPointJwt.class
+com/resumebuilder/service/LatexPdfService.class
+com/resumebuilder/payload/response/AdminPageResponse.class
 com/resumebuilder/security/services/UserDetailsServiceImpl.class
+com/resumebuilder/payload/response/AdminStatsResponse.class
+com/resumebuilder/payload/response/AdminResumeResponse.class
 com/resumebuilder/security/services/UserDetailsImpl.class
 com/resumebuilder/model/Resume.class
 com/resumebuilder/payload/response/MessageResponse.class
@@ -10,7 +14,10 @@ com/resumebuilder/model/Resume$Skill.class
 com/resumebuilder/payload/request/LoginRequest.class
 com/resumebuilder/payload/request/SignupRequest.class
 com/resumebuilder/model/Resume$Education.class
+com/resumebuilder/controller/AdminController.class
+com/resumebuilder/model/Resume$Achievement.class
 com/resumebuilder/model/Resume$Project.class
+com/resumebuilder/payload/response/AdminUserResponse.class
 com/resumebuilder/controller/PdfController.class
 com/resumebuilder/repository/UserRepository.class
 com/resumebuilder/security/jwt/JwtUtils.class
@@ -19,7 +26,10 @@ com/resumebuilder/security/jwt/AuthTokenFilter.class
 com/resumebuilder/ResumeBuilderApplication.class
 com/resumebuilder/payload/response/JwtResponse.class
 com/resumebuilder/exception/GlobalExceptionHandler.class
+com/resumebuilder/payload/response/AdminStatsExtendedResponse.class
 com/resumebuilder/controller/AuthController.class
+com/resumebuilder/service/LatexTemplateService.class
+com/resumebuilder/payload/request/AdminRolesRequest.class
 com/resumebuilder/repository/ResumeRepository.class
 com/resumebuilder/controller/ResumeController.class
 com/resumebuilder/controller/TemplateController.class
