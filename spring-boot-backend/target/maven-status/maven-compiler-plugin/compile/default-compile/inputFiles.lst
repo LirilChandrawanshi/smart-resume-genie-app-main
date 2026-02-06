@@ -1,5 +1,6 @@
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/payload/response/AdminPageResponse.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/controller/AdminController.java
+/Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/controller/HealthController.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/security/jwt/AuthEntryPointJwt.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/security/jwt/JwtUtils.java
 /Users/macbook/Downloads/smart-resume-genie-app-main/spring-boot-backend/src/main/java/com/resumebuilder/security/services/UserDetailsImpl.java

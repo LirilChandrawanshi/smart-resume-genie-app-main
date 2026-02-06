@@ -4,6 +4,7 @@ com/resumebuilder/payload/response/AdminPageResponse.class
 com/resumebuilder/security/services/UserDetailsServiceImpl.class
 com/resumebuilder/payload/response/AdminStatsResponse.class
 com/resumebuilder/payload/response/AdminResumeResponse.class
+com/resumebuilder/controller/HealthController.class
 com/resumebuilder/security/services/UserDetailsImpl.class
 com/resumebuilder/model/Resume.class
 com/resumebuilder/payload/response/MessageResponse.class
