@@ -40,7 +40,7 @@ const About = () => {
                 <div className="w-full md:w-1/3 flex justify-center">
                   <div className="w-40 h-40 bg-gray-200 rounded-full overflow-hidden">
                     <img 
-                      src="https://media.licdn.com/dms/image/v2/D4D03AQHiC3OBsQFurw/profile-displayphoto-shrink_800_800/B4DZYtrCneHAAg-/0/1744522982025?e=1770249600&v=beta&t=6MY2hDMz2g4bds7FC4EG3ad1c37LDyyHodZN1zI3WlI"
+                      src="https://storage.googleapis.com/univest-applications.appspot.com/pn_images/1770446184620_Picsart_23-10-14_17-19-08-104.webp"
                       alt="Liril Chandrawanshi"
                       className="w-full h-full object-cover"
                     />
