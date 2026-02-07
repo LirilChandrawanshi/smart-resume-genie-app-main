@@ -53,11 +53,11 @@ const About = () => {
                   <p className="mb-3">
                     Liril is a passionate full-stack developer with expertise in React, Spring Boot, and AI technologies. 
                     With a strong background in user experience design and software development, 
-                    she combines technical knowledge with a keen eye for detail to create intuitive, user-friendly applications.
+                    He combines technical knowledge with a keen eye for detail to create intuitive, user-friendly applications.
                   </p>
                   <p>
                     When not coding, Liril enjoys hiking, reading science fiction, and contributing to open-source projects. 
-                    She is committed to making technology more accessible and empowering people through innovative digital solutions.
+                    He is committed to making technology more accessible and empowering people through innovative digital solutions.
                   </p>
                 </div>
               </div>
