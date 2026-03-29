@@ -27,6 +27,23 @@ export interface ATSuggestion {
   reason: string;
 }
 
+export interface ATSScoreBreakdown {
+  contact: number;     // 0-100
+  summary: number;     // 0-100
+  experience: number;  // 0-100
+  skills: number;      // 0-100
+  keywords: number;    // 0-100
+  education: number;   // 0-100
+}
+
+export interface ATSScoreResult {
+  score: number;
+  feedback: string[];
+  breakdown: ATSScoreBreakdown;
+  foundKeywords: string[];
+  missingKeywords: string[];
+}
+
 // Common ATS-friendly keywords by category
 const COMMON_KEYWORDS = {
   technical: [
@@ -650,91 +667,131 @@ async function calculateDatasetBasedScore(resumeText: string, resumeData: any): 
 }
 
 /**
- * Calculate ATS score using dataset-based analysis (if available) + rule-based checks
+ * Calculate ATS score with full per-category breakdown and keyword analysis
  */
-export async function calculateATSScore(resumeData: any): Promise<{ score: number; feedback: string[] }> {
+export async function calculateATSScore(resumeData: any): Promise<ATSScoreResult> {
+  const pi = resumeData.personalInfo || {};
+  const experience: any[] = resumeData.experience || [];
+  const education: any[] = resumeData.education || [];
+  const skills: any[] = resumeData.skills || [];
   const feedback: string[] = [];
-  let score = 100;
 
-  // Try to use dataset-based scoring first
-  const resumeTextForScoring = [
-    resumeData.personalInfo?.summary || '',
-    ...(resumeData.experience || []).map((e: any) => e.description || '').join(' '),
-    ...(resumeData.skills || []).map((s: any) => s.name).join(' ')
+  /* ── 1. Contact (0-100) ── */
+  let contactScore = 0;
+  if (pi.name) contactScore += 25;
+  if (pi.email && pi.email.includes('@')) contactScore += 25;
+  if (pi.phone) contactScore += 20;
+  if (pi.location) contactScore += 15;
+  if (pi.linkedin || pi.github) contactScore += 15;
+  if (contactScore < 75) feedback.push('Complete your contact info (name, email, phone, location)');
+
+  /* ── 2. Summary (0-100) ── */
+  const summaryLen = (pi.summary || '').length;
+  let summaryScore = 0;
+  if (summaryLen >= 50) summaryScore = 40;
+  if (summaryLen >= 100) summaryScore = 65;
+  if (summaryLen >= 150) summaryScore = 80;
+  if (summaryLen >= 200) summaryScore = 95;
+  // bonus for action verbs in summary
+  if (COMMON_KEYWORDS.actionVerbs.some(v => (pi.summary || '').toLowerCase().includes(v.toLowerCase()))) summaryScore = Math.min(100, summaryScore + 5);
+  if (summaryScore < 50) feedback.push('Write a professional summary (100–200 words) with action verbs');
+
+  /* ── 3. Experience (0-100) ── */
+  const filledExp = experience.filter(e => e.title || e.company);
+  const allExpText = experience.map(e => e.description || '').join(' ').toLowerCase();
+  let expScore = 0;
+  if (filledExp.length > 0) expScore += 20;
+  if (filledExp.length >= 2) expScore += 10;
+  // descriptions
+  const withDesc = experience.filter(e => (e.description || '').length >= 30);
+  expScore += Math.min(30, withDesc.length * 15);
+  // action verbs
+  const hasActionVerbs = COMMON_KEYWORDS.actionVerbs.some(v => allExpText.includes(v.toLowerCase()));
+  if (hasActionVerbs) expScore += 20; else feedback.push('Use strong action verbs (Developed, Led, Optimised)');
+  // quantifiable metrics
+  const hasMetrics = /\d+[%+k]|\d+ (users?|projects?|teams?|clients?)/i.test(allExpText);
+  if (hasMetrics) expScore += 20; else feedback.push('Add measurable results with numbers/percentages');
+  expScore = Math.min(100, expScore);
+
+  /* ── 4. Skills (0-100) ── */
+  const skillNames = skills.map(s => s.name.toLowerCase());
+  // count individual skill items (level field may be comma-separated)
+  const totalSkillItems = skills.reduce((n, s) => {
+    const items = s.level ? s.level.split(',').filter((x: string) => x.trim()) : [];
+    return n + Math.max(1, items.length);
+  }, 0);
+  let skillScore = 0;
+  if (skillNames.some(n => n)) skillScore += 20;
+  skillScore += Math.min(50, totalSkillItems * 5);
+  const techHits = COMMON_KEYWORDS.technical.filter(t => skillNames.some(n => n.includes(t.toLowerCase()))).length;
+  skillScore += Math.min(30, techHits * 5);
+  skillScore = Math.min(100, skillScore);
+  if (skillScore < 50) feedback.push('Add more skills — aim for 6+ categories with comma-separated items');
+
+  /* ── 5. Keywords (0-100) ── */
+  const fullText = [
+    pi.summary || '', allExpText,
+    skills.map(s => `${s.name} ${s.level}`).join(' '),
   ].join(' ').toLowerCase();
+  const foundKeywords = COMMON_KEYWORDS.technical.filter(k => fullText.includes(k.toLowerCase()));
+  const missingKeywords = COMMON_KEYWORDS.technical.filter(k => !fullText.includes(k.toLowerCase())).slice(0, 12);
+  const keywordScore = Math.min(100, foundKeywords.length * 5);
+  if (foundKeywords.length < 8) feedback.push('Include more ATS keywords relevant to your target role');
 
-  const datasetScoreData = await calculateDatasetBasedScore(resumeTextForScoring, resumeData);
-  
-  if (datasetScoreData) {
-    // Use dataset-based scoring if available
-    console.log(`📊 Using dataset-based ATS score: ${datasetScoreData.score}/100`);
-    return datasetScoreData;
-  }
+  /* ── 6. Education (0-100) ── */
+  const filledEdu = education.filter(e => e.school || e.degree);
+  let eduScore = 0;
+  if (filledEdu.length > 0) eduScore += 60;
+  if (filledEdu.some(e => e.degree)) eduScore += 20;
+  if (filledEdu.some(e => e.startDate || e.endDate)) eduScore += 20;
+  if (eduScore < 60) feedback.push('Add education (school, degree, dates)');
 
-  // Fallback to rule-based scoring
-  console.log('📝 Using rule-based ATS scoring (dataset not available)');
+  /* ── Weighted overall score ── */
+  const breakdown: ATSScoreBreakdown = {
+    contact: Math.round(contactScore),
+    summary: Math.round(summaryScore),
+    experience: Math.round(expScore),
+    skills: Math.round(skillScore),
+    keywords: Math.round(keywordScore),
+    education: Math.round(eduScore),
+  };
 
-  // Check summary
-  if (!resumeData.personalInfo?.summary || resumeData.personalInfo.summary.length < 50) {
-    score -= 15;
-    feedback.push('Professional summary is missing or too short');
-  }
-
-  // Check skills count
-  const skillsCount = (resumeData.skills || []).length;
-  if (skillsCount < 5) {
-    score -= 10;
-    feedback.push('Add more relevant skills (aim for 5-10)');
-  }
-
-  // Check experience descriptions
-  const emptyExp = (resumeData.experience || []).filter((e: any) => !e.description || e.description.length < 30);
-  if (emptyExp.length > 0) {
-    score -= 20;
-    feedback.push(`${emptyExp.length} experience${emptyExp.length > 1 ? ' entries' : ' entry'} missing detailed descriptions`);
-  }
-
-  // Check for action verbs
-  const allExpText = (resumeData.experience || [])
-    .map((e: any) => e.description || '')
-    .join(' ')
-    .toLowerCase();
-  
-  const hasActionVerbs = COMMON_KEYWORDS.actionVerbs.some(verb => 
-    allExpText.includes(verb.toLowerCase())
+  // Weights: experience 30%, keywords 20%, skills 20%, summary 15%, contact 10%, education 5%
+  const overallScore = Math.round(
+    breakdown.experience * 0.30 +
+    breakdown.keywords   * 0.20 +
+    breakdown.skills     * 0.20 +
+    breakdown.summary    * 0.15 +
+    breakdown.contact    * 0.10 +
+    breakdown.education  * 0.05
   );
-  
-  if (!hasActionVerbs) {
-    score -= 10;
-    feedback.push('Use strong action verbs in experience descriptions');
+
+  // Try dataset-based adjustment
+  const resumeTextForDataset = fullText;
+  const datasetScore = await calculateDatasetBasedScore(resumeTextForDataset, resumeData);
+
+  let finalScore = overallScore;
+  if (datasetScore) {
+    // Blend: 70% rule-based (more granular), 30% dataset signal
+    finalScore = Math.round(overallScore * 0.7 + datasetScore.score * 0.3);
+    feedback.unshift(...datasetScore.feedback.slice(0, 1));
   }
 
-  // Check for quantifiable metrics
-  const hasMetrics = /\d+%/.test(allExpText) || /\d+\+/.test(allExpText);
-  if (!hasMetrics) {
-    score -= 10;
-    feedback.push('Add quantifiable results (percentages, numbers) to show impact');
-  }
+  finalScore = Math.max(5, Math.min(99, finalScore));
 
-  // Check contact info
-  if (!resumeData.personalInfo?.email || !resumeData.personalInfo?.phone) {
-    score -= 5;
-    feedback.push('Ensure contact information is complete');
-  }
-
-  // Check education
-  if (!resumeData.education || resumeData.education.length === 0) {
-    score -= 10;
-    feedback.push('Add education details');
-  }
-
-  if (score >= 80) {
-    feedback.unshift('Your resume is well-optimized for ATS systems!');
-  } else if (score >= 60) {
-    feedback.unshift('Your resume is good but could be improved for better ATS compatibility.');
+  if (feedback.length === 0 || finalScore >= 85) {
+    feedback.unshift('Excellent! Your resume is well-optimised for ATS systems.');
+  } else if (finalScore >= 65) {
+    feedback.unshift('Good resume — a few targeted improvements will boost your ATS ranking.');
   } else {
-    feedback.unshift('Your resume needs significant improvements for ATS compatibility.');
+    feedback.unshift('Your resume needs improvement to pass ATS filters reliably.');
   }
 
-  return { score: Math.max(0, score), feedback };
+  return {
+    score: finalScore,
+    feedback,
+    breakdown,
+    foundKeywords: foundKeywords.slice(0, 16),
+    missingKeywords,
+  };
 }

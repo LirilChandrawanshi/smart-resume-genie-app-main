@@ -57,41 +57,36 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
           }
         }
         
-        // Fallback to client-side PDF generation (scale to fit one A4 page)
-        const resumeElement = document.querySelector('.resume-preview');
-        
+        // Client-side PDF: capture the hidden full-resolution element (no CSS transform distortion)
+        const resumeElement = (
+          document.querySelector('.resume-print-source') ??
+          document.querySelector('.resume-preview')
+        ) as HTMLElement | null;
+
         if (!resumeElement) {
           throw new Error('Resume preview element not found');
         }
-        
-        const canvas = await html2canvas(resumeElement as HTMLElement, {
-          scale: 2,
+
+        // Temporarily make the hidden element measurable
+        const prevVisibility = resumeElement.style.visibility;
+        resumeElement.style.visibility = 'visible';
+
+        const canvas = await html2canvas(resumeElement, {
+          scale: 1.5,           // 1.5× gives sharp text without bloating the file
           useCORS: true,
           logging: false,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          width: 794,           // force A4 width so nothing gets clipped
+          windowWidth: 794,
         });
-        
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-        
-        const pageWidth = 210;
-        const pageHeight = 297;
-        const aspect = canvas.width / canvas.height;
-        const pageAspect = pageWidth / pageHeight;
-        let imgWidth: number;
-        let imgHeight: number;
-        if (aspect > pageAspect) {
-          imgWidth = pageWidth;
-          imgHeight = pageWidth / aspect;
-        } else {
-          imgHeight = pageHeight;
-          imgWidth = pageHeight * aspect;
-        }
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+        resumeElement.style.visibility = prevVisibility;
+
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        // JPEG at 0.88 quality — sharp text, file stays ≈80–120 KB
+        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 210 * (canvas.height / canvas.width));
         pdf.save(`${resumeData.personalInfo.name || 'Resume'}.pdf`);
         
         toast({

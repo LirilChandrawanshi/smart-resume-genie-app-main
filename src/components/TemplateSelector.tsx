@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { CheckCircle2 } from 'lucide-react';
-import { templatesApi, TemplateInfo } from '@/lib/api';
+import { CheckCircle2, ExternalLink } from 'lucide-react';
+import { templatesApi } from '@/lib/api';
+import { loadCustomTemplates } from '@/lib/latexTemplateParser';
+import {
+  ClassicTemplate, ModernTemplate, ExecutiveTemplate,
+  MinimalTemplate, CreativeTemplate, ProfessionalTemplate,
+  TEMPLATE_META,
+} from './templates';
+import { SAMPLE_RESUME } from '@/data/sampleResumeData';
 
 interface TemplateSelectorProps {
   selectedTemplate: string;
@@ -11,80 +17,147 @@ interface TemplateSelectorProps {
   currentResumeId?: string;
 }
 
-const TEMPLATE_COLORS: Record<string, string> = {
-  default: 'bg-blue-500',
-  jake: 'bg-indigo-600',
-  modern: 'bg-blue-500',
-  classic: 'bg-gray-700',
-  minimalist: 'bg-indigo-500',
-  creative: 'bg-purple-500',
-  professional: 'bg-green-500',
-  academic: 'bg-red-500',
-  executive: 'bg-slate-600',
-};
+const PREVIEW_W = 794;
 
-const TemplateSelector: React.FC<TemplateSelectorProps> = ({ selectedTemplate, onSelectTemplate, currentResumeId }) => {
-  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const templatesUrl = currentResumeId ? `/templates?resumeId=${currentResumeId}` : '/templates';
+// Scaled mini resume preview for each template
+const MiniPreview: React.FC<{ templateId: string }> = ({ templateId }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.18);
 
   useEffect(() => {
-    templatesApi.getTemplates()
-      .then((res) => setTemplates(res.templates || []))
-      .catch(() => setTemplates([]));
+    if (ref.current) setScale(ref.current.offsetWidth / PREVIEW_W);
   }, []);
 
-  const displayTemplates = templates.length > 0 ? templates.slice(0, 4) : [
-    { id: 'default', name: 'Default', description: '', hasLatex: false },
-    { id: 'jake', name: 'Jake', description: '', hasLatex: true },
-    { id: 'modern', name: 'Modern', description: '', hasLatex: false },
-    { id: 'professional', name: 'Professional', description: '', hasLatex: false },
-  ];
+  const props = { data: SAMPLE_RESUME };
+  const map: Record<string, React.ReactNode> = {
+    classic:      <ClassicTemplate {...props} />,
+    jake:         <ClassicTemplate {...props} />,
+    modern:       <ModernTemplate {...props} />,
+    executive:    <ExecutiveTemplate {...props} />,
+    academic:     <ExecutiveTemplate {...props} />,
+    minimalist:   <MinimalTemplate {...props} />,
+    creative:     <CreativeTemplate {...props} />,
+    professional: <ProfessionalTemplate {...props} />,
+    default:      <ProfessionalTemplate {...props} />,
+  };
+  const component = map[templateId] ?? map.default;
+  const visibleH  = 88; // px
+  const innerH    = visibleH / scale;
+
+  return (
+    <div
+      ref={ref}
+      style={{ width: '100%', height: visibleH, overflow: 'hidden', background: '#fff', position: 'relative' }}
+    >
+      <div
+        style={{
+          width: PREVIEW_W,
+          minHeight: innerH,
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        {component}
+      </div>
+    </div>
+  );
+};
+
+const TemplateSelector: React.FC<TemplateSelectorProps> = ({
+  selectedTemplate,
+  onSelectTemplate,
+  currentResumeId,
+}) => {
+  const [allTemplates, setAllTemplates] = useState<
+    Array<{ id: string; name: string; accentColor: string; isCustom?: boolean }>
+  >([]);
+
+  const templatesPageUrl = currentResumeId
+    ? `/templates?resumeId=${currentResumeId}`
+    : '/templates';
+
+  useEffect(() => {
+    templatesApi
+      .getTemplates()
+      .then((res) => {
+        const api = (res.templates || []).map((t) => ({
+          id: t.id,
+          name: TEMPLATE_META[t.id]?.label ?? t.name,
+          accentColor: TEMPLATE_META[t.id]?.accentColor ?? '#4f46e5',
+        }));
+        const custom = loadCustomTemplates().map((t) => ({
+          id: t.id,
+          name: t.name,
+          accentColor: t.accentColor,
+          isCustom: true,
+        }));
+        setAllTemplates([...api, ...custom]);
+      })
+      .catch(() => {
+        setAllTemplates([
+          { id: 'classic',      name: 'Classic',      accentColor: '#1f2937' },
+          { id: 'modern',       name: 'Modern',       accentColor: '#1e293b' },
+          { id: 'professional', name: 'Professional', accentColor: '#4f46e5' },
+          { id: 'creative',     name: 'Creative',     accentColor: '#059669' },
+        ]);
+      });
+  }, []);
+
+  const displayTemplates = allTemplates.slice(0, 6);
 
   return (
     <Card className="w-full">
       <CardContent className="p-4">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="font-medium">Choose Template</h3>
-          <Button variant="link" size="sm" className="p-0 h-auto text-resume-primary" onClick={() => window.open(templatesUrl, '_blank')}>
-            View all
+          <h3 className="font-semibold text-sm">Choose Template</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground gap-1"
+            onClick={() => window.open(templatesPageUrl, '_blank')}
+          >
+            View all <ExternalLink className="h-3 w-3" />
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {displayTemplates.map((template) => {
-            const color = TEMPLATE_COLORS[template.id] ?? 'bg-gray-500';
+
+        <div className="grid grid-cols-3 gap-2">
+          {displayTemplates.map((t) => {
+            const isSelected = selectedTemplate === t.id;
             return (
-              <div
-                key={template.id}
-                className={`relative cursor-pointer rounded-md overflow-hidden border-2 hover:shadow-md transition-shadow ${
-                  selectedTemplate === template.id ? 'border-resume-primary' : 'border-transparent'
-                }`}
-                onClick={() => onSelectTemplate(template.id)}
+              <button
+                key={t.id}
+                onClick={() => onSelectTemplate(t.id)}
+                className="relative text-left rounded-lg overflow-hidden border-2 transition-all duration-150 hover:shadow-md focus:outline-none"
+                style={{
+                  borderColor: isSelected ? t.accentColor : 'transparent',
+                  boxShadow: isSelected ? `0 0 0 1px ${t.accentColor}` : undefined,
+                }}
               >
-                <div className="flex flex-col h-28">
-                  <div className={`relative ${color} h-8`}>
-                    {template.hasLatex && (
-                      <Badge variant="secondary" className="absolute top-0.5 right-0.5 text-[10px] px-1 py-0">
-                        LaTeX
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="bg-white p-2 flex-1">
-                    <div className="w-full h-2 bg-gray-200 rounded mb-1"></div>
-                    <div className="w-3/4 h-2 bg-gray-200 rounded mb-3"></div>
-                    <div className="w-full h-1 bg-gray-100 rounded mb-1"></div>
-                    <div className="w-full h-1 bg-gray-100 rounded mb-1"></div>
-                    <div className="w-2/3 h-1 bg-gray-100 rounded"></div>
-                  </div>
+                {/* Accent top strip */}
+                <div style={{ height: '3px', backgroundColor: t.accentColor }} />
+
+                {/* Mini preview */}
+                <div style={{ border: '1px solid #f1f5f9', borderTop: 0 }}>
+                  <MiniPreview templateId={t.id} />
                 </div>
-                {selectedTemplate === template.id && (
-                  <div className="absolute top-1 right-1">
-                    <CheckCircle2 className="h-5 w-5 text-resume-primary" />
+
+                {/* Name bar */}
+                <div
+                  className="text-center py-1 text-[10px] font-medium"
+                  style={{ backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', color: isSelected ? t.accentColor : '#64748b' }}
+                >
+                  {t.name}
+                </div>
+
+                {/* Selected checkmark */}
+                {isSelected && (
+                  <div className="absolute top-1.5 right-1" style={{ top: 7 }}>
+                    <CheckCircle2 className="h-4 w-4 drop-shadow" style={{ color: t.accentColor }} />
                   </div>
                 )}
-                <div className="text-center text-xs py-1 bg-gray-50 border-t">
-                  {template.name}
-                </div>
-              </div>
+              </button>
             );
           })}
         </div>

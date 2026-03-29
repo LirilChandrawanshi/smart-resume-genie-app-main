@@ -20,12 +20,14 @@ public class TemplateController {
     private final ResourcePatternResolver resourcePatternResolver;
 
     private static final List<Map<String, Object>> HTML_ONLY_TEMPLATES = List.of(
-            createTemplate("default", "Default", "The standard modern resume template", false),
-            createTemplate("modern", "Modern", "A clean, contemporary design with a professional look", false),
-            createTemplate("professional", "Professional", "Traditional layout perfect for corporate environments", false),
-            createTemplate("creative", "Creative", "Unique design for creative industries", false),
-            createTemplate("minimal", "Minimal", "Simple, elegant design with focus on content", false),
-            createTemplate("executive", "Executive", "Sophisticated design for senior positions", false)
+            createTemplate("default",      "Default",      "The standard modern resume template",                  false),
+            createTemplate("classic",      "Classic",      "Timeless black & white — trusted by recruiters worldwide", false),
+            createTemplate("jake",         "Jake",         "LaTeX-style academic resume — gold standard for tech roles", false),
+            createTemplate("modern",       "Modern",       "Dark sidebar with skill visualization — makes you stand out", false),
+            createTemplate("professional", "Professional", "Indigo accents, pill badges — perfect for corporate roles",  false),
+            createTemplate("creative",     "Creative",     "Timeline experience, emerald accents — for innovators",     false),
+            createTemplate("minimalist",   "Minimal",      "Ultra-clean with maximum whitespace — less is more",        false),
+            createTemplate("executive",    "Executive",    "Bold navy header — designed for senior leadership",         false)
     );
 
     public TemplateController(LatexTemplateService latexTemplateService,

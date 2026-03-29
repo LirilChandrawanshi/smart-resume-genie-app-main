@@ -1,274 +1,405 @@
-
 import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Sparkles, ThumbsUp, ThumbsDown, LightbulbIcon, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Sparkles, RefreshCw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { useToast } from './ui/use-toast';
-import { generateATSSuggestions, calculateATSScore, type ATSuggestion } from '../lib/atsSuggestions';
-import { Badge } from './ui/badge';
+import {
+  generateATSSuggestions,
+  calculateATSScore,
+  type ATSuggestion,
+  type ATSScoreResult,
+  type ATSScoreBreakdown,
+} from '../lib/atsSuggestions';
 
+/* ─── props ─────────────────────────────────────────────────────── */
 interface AiSuggestionsProps {
   resumeData: any;
   onApplySuggestion: (field: string, value: string) => void;
 }
 
-interface ExtendedSuggestion extends ATSuggestion {
-  applied: boolean;
-}
+/* ─── Score ring (SVG donut) ─────────────────────────────────────── */
+const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
+  const R = 54;
+  const C = 2 * Math.PI * R;          // ≈ 339
+  const progress = (score / 100) * C;
+  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
+  const label = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs Work';
+
+  return (
+    <div className="relative flex flex-col items-center justify-center" style={{ width: 140, height: 140 }}>
+      <svg width="140" height="140" style={{ transform: 'rotate(-90deg)' }}>
+        {/* track */}
+        <circle cx="70" cy="70" r={R} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+        {/* progress */}
+        <circle
+          cx="70" cy="70" r={R}
+          fill="none"
+          stroke={color}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${progress} ${C}`}
+          style={{ transition: 'stroke-dasharray 0.8s ease' }}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-3xl font-black" style={{ color }}>{score}</span>
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+        <span className="text-[9px] text-slate-400">/ 100</span>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Category bar ───────────────────────────────────────────────── */
+const CategoryBar: React.FC<{ label: string; score: number; weight: string }> = ({ label, score, weight }) => {
+  const color = score >= 80 ? '#22c55e' : score >= 55 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-slate-700">{label}</span>
+        <span className="flex items-center gap-1.5">
+          <span className="text-slate-400 text-[10px]">{weight}</span>
+          <span className="font-bold" style={{ color }}>{score}</span>
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${score}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+};
+
+/* ─── Keyword chip ───────────────────────────────────────────────── */
+const KeywordChip: React.FC<{ keyword: string; found: boolean }> = ({ keyword, found }) => (
+  <span
+    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border"
+    style={found
+      ? { backgroundColor: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+      : { backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}
+  >
+    {found
+      ? <CheckCircle2 className="h-2.5 w-2.5" />
+      : <XCircle className="h-2.5 w-2.5" />}
+    {keyword}
+  </span>
+);
+
+/* ─── Suggestion card ────────────────────────────────────────────── */
+const PRIORITY_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
+  high:   { bg: '#fef2f2', text: '#dc2626', border: '#fecaca', label: 'High Priority' },
+  medium: { bg: '#fffbeb', text: '#d97706', border: '#fde68a', label: 'Medium' },
+  low:    { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Low' },
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  summary:    '📝 Summary',
+  skill:      '⚡ Skill',
+  experience: '💼 Experience',
+  education:  '🎓 Education',
+  format:     '📋 Format',
+  keyword:    '🔑 Keyword',
+};
+
+const SuggestionCard: React.FC<{
+  suggestion: ATSuggestion & { applied: boolean };
+  canApply: boolean;
+  onApply: () => void;
+}> = ({ suggestion, canApply, onApply }) => {
+  const [expanded, setExpanded] = useState(false);
+  const ps = PRIORITY_STYLE[suggestion.priority] || PRIORITY_STYLE.low;
+
+  return (
+    <div
+      className="rounded-xl border overflow-hidden"
+      style={{ borderColor: ps.border, backgroundColor: '#fff' }}
+    >
+      {/* Header row */}
+      <div
+        className="flex items-center justify-between px-3 py-2.5 cursor-pointer"
+        style={{ backgroundColor: ps.bg }}
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-slate-700 truncate">
+            {TYPE_LABEL[suggestion.type] || suggestion.type}
+          </span>
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border flex-shrink-0"
+            style={{ color: ps.text, borderColor: ps.border, backgroundColor: '#fff' }}
+          >
+            {ps.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+          {suggestion.applied && (
+            <span className="text-[10px] text-green-600 font-semibold flex items-center gap-0.5">
+              <CheckCircle2 className="h-3 w-3" /> Applied
+            </span>
+          )}
+          {expanded ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+        </div>
+      </div>
+
+      {/* Body */}
+      {expanded && (
+        <div className="px-3 py-3 space-y-2 border-t" style={{ borderColor: ps.border }}>
+          <p className="text-[11px] text-slate-500 leading-relaxed">{suggestion.reason}</p>
+          <div className="text-xs text-slate-800 bg-slate-50 rounded-lg p-2.5 leading-relaxed border border-slate-100">
+            {suggestion.value}
+          </div>
+          {canApply && !suggestion.applied && (
+            <button
+              onClick={onApply}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors"
+              style={{ backgroundColor: '#6366f1' }}
+            >
+              Apply to resume
+            </button>
+          )}
+          {!canApply && (
+            <p className="text-[10px] text-slate-400 italic">Apply manually in the form</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── Main component ─────────────────────────────────────────────── */
+const BREAKDOWN_LABELS: Array<{ key: keyof ATSScoreBreakdown; label: string; weight: string }> = [
+  { key: 'experience', label: 'Work Experience', weight: '30%' },
+  { key: 'keywords',   label: 'Keyword Match',   weight: '20%' },
+  { key: 'skills',     label: 'Skills',           weight: '20%' },
+  { key: 'summary',    label: 'Summary',          weight: '15%' },
+  { key: 'contact',    label: 'Contact Info',     weight: '10%' },
+  { key: 'education',  label: 'Education',        weight: '5%'  },
+];
+
+const canApplyField = (field: string) =>
+  field === 'summary' || field === 'skill' || field.startsWith('experience-');
 
 const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySuggestion }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<ExtendedSuggestion[]>([]);
-  const [atsScore, setAtsScore] = useState<{ score: number; feedback: string[] } | null>(null);
+  const [scoreResult, setScoreResult] = useState<ATSScoreResult | null>(null);
+  const [suggestions, setSuggestions] = useState<(ATSuggestion & { applied: boolean })[]>([]);
+  const [activeTab, setActiveTab] = useState<'score' | 'keywords' | 'suggestions'>('score');
 
-  // Generate ATS-friendly suggestions using rule-based checks and optional AI
-  const generateSuggestions = async () => {
+  const analyse = async () => {
     setLoading(true);
-    
     try {
-      // Calculate ATS score (now async to support dataset-based scoring)
-      const score = await calculateATSScore(resumeData);
-      setAtsScore(score);
-      
-      // Generate suggestions
-      const atsSuggestions = await generateATSSuggestions(resumeData);
-      
-      // Convert to extended format
-      const extendedSuggestions: ExtendedSuggestion[] = atsSuggestions.map(s => ({
-        ...s,
-        applied: false
-      }));
-      
-      setSuggestions(extendedSuggestions);
-      
-      if (extendedSuggestions.length === 0) {
-        toast({
-          title: "Great job!",
-          description: `Your resume scored ${score.score}/100 on ATS compatibility. Keep up the good work!`,
-        });
-      } else {
-        toast({
-          title: "Suggestions generated",
-          description: `Found ${extendedSuggestions.length} suggestion${extendedSuggestions.length > 1 ? 's' : ''} to improve your ATS score (${score.score}/100)`,
-        });
-      }
-    } catch (error) {
-      console.error('Error generating suggestions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate suggestions. Please try again.",
-        variant: "destructive",
-      });
+      const [score, atsSuggestions] = await Promise.all([
+        calculateATSScore(resumeData),
+        generateATSSuggestions(resumeData),
+      ]);
+      setScoreResult(score);
+      setSuggestions(atsSuggestions.map(s => ({ ...s, applied: false })));
+      setActiveTab('score');
+      toast({ title: `ATS Score: ${score.score}/100`, description: score.feedback[0] });
+    } catch {
+      toast({ title: 'Analysis failed', description: 'Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Only summary, skill, and experience-description can be applied to resume state; others are guidance-only
-  const canApplySuggestion = (field: string) =>
-    field === 'summary' ||
-    field === 'skill' ||
-    field.startsWith('experience-');
-
-  const handleApplySuggestion = (index: number) => {
-    const suggestion = suggestions[index];
-
-    if (!canApplySuggestion(suggestion.field)) {
-      toast({
-        title: "Guidance only",
-        description: "This suggestion is advice to consider; update your resume manually in the form.",
-      });
-      return;
+  const applyAt = (index: number) => {
+    const s = suggestions[index];
+    if (s.field === 'summary') onApplySuggestion('summary', s.value);
+    else if (s.field === 'skill') onApplySuggestion('newSkill', s.value);
+    else if (s.field.startsWith('experience-')) {
+      const parts = s.field.split('-');
+      onApplySuggestion(`${parts[0]}-${parts[1]}-${parts[2] || 'description'}`, s.value);
     }
-
-    if (suggestion.field === 'summary') {
-      onApplySuggestion('summary', suggestion.value);
-    } else if (suggestion.field === 'skill') {
-      onApplySuggestion('newSkill', suggestion.value);
-    } else if (suggestion.field.startsWith('experience-')) {
-      const parts = suggestion.field.split('-');
-      const fieldKey = parts.length === 3 ? `${parts[0]}-${parts[1]}-${parts[2]}` : `${parts[0]}-${parts[1]}-description`;
-      onApplySuggestion(fieldKey, suggestion.value);
-    }
-
-    // Mark as applied only when we actually updated resume state
-    const updatedSuggestions = [...suggestions];
-    updatedSuggestions[index] = { ...updatedSuggestions[index], applied: true };
-    setSuggestions(updatedSuggestions);
-
-    toast({
-      title: "Suggestion applied",
-      description: "The ATS-friendly suggestion has been added to your resume.",
-    });
+    const next = [...suggestions];
+    next[index] = { ...next[index], applied: true };
+    setSuggestions(next);
+    toast({ title: 'Applied!', description: 'Suggestion added to your resume.' });
   };
 
-  const handleFeedback = (positive: boolean) => {
-    toast({
-      title: positive ? "Thanks for your feedback!" : "We'll improve our suggestions",
-      description: positive 
-        ? "We're glad you found our suggestions helpful." 
-        : "Thank you for helping us improve the suggestion quality.",
-    });
-  };
+  /* ── Empty state ── */
+  if (!scoreResult) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div
+          className="px-5 py-8 flex flex-col items-center text-center"
+          style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)' }}
+        >
+          <div className="p-3 rounded-full mb-4" style={{ backgroundColor: 'rgba(99,102,241,0.25)', border: '1px solid rgba(99,102,241,0.4)' }}>
+            <Zap className="h-6 w-6 text-indigo-300" />
+          </div>
+          <h3 className="text-white font-bold text-base mb-1">ATS Resume Scanner</h3>
+          <p className="text-slate-400 text-xs max-w-xs mb-5 leading-relaxed">
+            Get an instant ATS compatibility score with a full breakdown — contact, summary, skills, keywords, and experience quality.
+          </p>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-2 justify-center mb-6">
+            {['Score out of 100', 'Keyword analysis', 'Section breakdown', 'Fix suggestions'].map(f => (
+              <span key={f} className="text-[10px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: 'rgba(99,102,241,0.2)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)' }}>
+                ✓ {f}
+              </span>
+            ))}
+          </div>
+
+          <button
+            onClick={analyse}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
+          >
+            {loading
+              ? <><RefreshCw className="h-4 w-4 animate-spin" /> Scanning resume…</>
+              : <><Sparkles className="h-4 w-4" /> Scan My Resume</>}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Results state ── */
+  const highCount = suggestions.filter(s => s.priority === 'high').length;
+  const scoreColor = scoreResult.score >= 80 ? '#22c55e' : scoreResult.score >= 60 ? '#f59e0b' : '#ef4444';
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-resume-primary" />
-          <span>AI Resume Assistant</span>
-        </CardTitle>
-        <CardDescription>Get free ATS-friendly suggestions to optimize your resume</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {suggestions.length === 0 ? (
-          <div className="text-center py-6">
-            <LightbulbIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <h3 className="text-lg font-medium mb-2">Get ATS-Friendly Suggestions</h3>
-            <p className="text-muted-foreground mb-4">
-              Our free analysis uses rule-based checks and AI to identify improvements for better ATS compatibility.
-            </p>
-            <Button 
-              onClick={generateSuggestions} 
-              className="bg-resume-primary hover:bg-resume-secondary"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing Resume...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Analyze & Generate Suggestions
-                </>
-              )}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* ATS Score Display */}
-            {atsScore && (
-              <Card className="bg-accent border-accent">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {atsScore.score >= 80 ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-yellow-500" />
-                      )}
-                      <span className="font-medium">ATS Compatibility Score</span>
-                    </div>
-                    <Badge variant={atsScore.score >= 80 ? "default" : atsScore.score >= 60 ? "secondary" : "destructive"}>
-                      {atsScore.score}/100
-                    </Badge>
-                  </div>
-                  {atsScore.feedback.length > 0 && (
-                    <p className="text-xs text-muted-foreground">{atsScore.feedback[0]}</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-indigo-500" />
+          <span className="font-bold text-sm text-slate-800">ATS Scanner</span>
+          {highCount > 0 && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
+              {highCount} urgent
+            </span>
+          )}
+        </div>
+        <button
+          onClick={analyse}
+          disabled={loading}
+          className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Re-scan
+        </button>
+      </div>
 
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">ATS-Friendly Suggestions</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => {
-                  setSuggestions([]);
-                  setAtsScore(null);
-                }}
-                className="text-xs"
-              >
-                Clear All
-              </Button>
-            </div>
-            
-            {suggestions.map((suggestion, index) => (
-              <Card key={index} className={`bg-accent border-accent ${suggestion.priority === 'high' ? 'border-l-4 border-l-orange-500' : ''}`}>
-                <CardContent className="p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {suggestion.type === 'summary' && 'Professional Summary'}
-                        {suggestion.type === 'skill' && 'Add Missing Skill'}
-                        {suggestion.type === 'experience' && 'Experience Description'}
-                        {suggestion.type === 'education' && 'Education Details'}
-                        {suggestion.type === 'format' && 'Formatting Issue'}
-                        {suggestion.type === 'keyword' && 'Keyword Optimization'}
-                      </span>
-                      <Badge 
-                        variant={suggestion.priority === 'high' ? 'destructive' : suggestion.priority === 'medium' ? 'secondary' : 'outline'}
-                        className="text-xs"
-                      >
-                        {suggestion.priority}
-                      </Badge>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{suggestion.reason}</p>
-                  <p className="text-sm mb-3">{suggestion.value}</p>
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => handleFeedback(true)}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => handleFeedback(false)}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleApplySuggestion(index)}
-                      disabled={suggestion.applied && canApplySuggestion(suggestion.field)}
-                      className={suggestion.applied && canApplySuggestion(suggestion.field) ? "bg-green-500 hover:bg-green-600" : ""}
-                    >
-                      {suggestion.applied && canApplySuggestion(suggestion.field)
-                        ? "Applied"
-                        : canApplySuggestion(suggestion.field)
-                          ? "Apply"
-                          : "Got it"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+      {/* Score hero strip */}
+      <div
+        className="flex items-center gap-4 px-4 py-4"
+        style={{ background: 'linear-gradient(135deg, #0f172a, #1e1b4b)' }}
+      >
+        <ScoreRing score={scoreResult.score} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-slate-400 mb-1">ATS Compatibility Score</p>
+          <p className="text-white font-semibold text-sm leading-snug">
+            {scoreResult.feedback[0]}
+          </p>
+          {scoreResult.feedback[1] && (
+            <p className="text-slate-400 text-[11px] mt-1 leading-snug">{scoreResult.feedback[1]}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Tab nav */}
+      <div className="flex border-b border-slate-100">
+        {([
+          { id: 'score',       label: 'Breakdown' },
+          { id: 'keywords',    label: `Keywords (${scoreResult.foundKeywords.length})` },
+          { id: 'suggestions', label: `Fixes (${suggestions.length})` },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="flex-1 py-2.5 text-xs font-semibold transition-colors"
+            style={activeTab === tab.id
+              ? { color: '#6366f1', borderBottom: '2px solid #6366f1' }
+              : { color: '#94a3b8' }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="p-4">
+
+        {/* ── Breakdown tab ── */}
+        {activeTab === 'score' && (
+          <div className="space-y-3">
+            {BREAKDOWN_LABELS.map(({ key, label, weight }) => (
+              <CategoryBar
+                key={key}
+                label={label}
+                score={scoreResult.breakdown[key]}
+                weight={weight}
+              />
             ))}
-            
-            <Button 
-              onClick={generateSuggestions} 
-              variant="outline" 
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Getting more suggestions...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Suggestions
-                </>
-              )}
-            </Button>
+            <p className="text-[10px] text-slate-400 text-center pt-1">
+              Scores weighted by recruiter/ATS importance
+            </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* ── Keywords tab ── */}
+        {activeTab === 'keywords' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] font-bold text-green-700 mb-2 uppercase tracking-wider">
+                Found ({scoreResult.foundKeywords.length})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {scoreResult.foundKeywords.map(k => <KeywordChip key={k} keyword={k} found />)}
+                {scoreResult.foundKeywords.length === 0 && (
+                  <p className="text-xs text-slate-400 italic">No ATS keywords detected yet</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-red-600 mb-2 uppercase tracking-wider">
+                Missing ({scoreResult.missingKeywords.length})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {scoreResult.missingKeywords.map(k => <KeywordChip key={k} keyword={k} found={false} />)}
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400">
+              Add missing keywords naturally in your experience descriptions or skills section.
+            </p>
+          </div>
+        )}
+
+        {/* ── Suggestions tab ── */}
+        {activeTab === 'suggestions' && (
+          <div className="space-y-2">
+            {suggestions.length === 0 && (
+              <div className="text-center py-6">
+                <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-700">No issues found!</p>
+                <p className="text-xs text-slate-400 mt-1">Your resume looks great.</p>
+              </div>
+            )}
+            {/* Sort: high → medium → low */}
+            {[...suggestions]
+              .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority]))
+              .map((s, i) => (
+                <SuggestionCard
+                  key={i}
+                  suggestion={s}
+                  canApply={canApplyField(s.field)}
+                  onApply={() => {
+                    const original = suggestions.findIndex((x, xi) =>
+                      x.field === s.field && x.value === s.value
+                    );
+                    applyAt(original >= 0 ? original : i);
+                  }}
+                />
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

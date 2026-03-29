@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ResumeForm from '@/components/ResumeForm';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { resumeApi, Resume } from '@/lib/api';
+import { SAMPLE_RESUME } from '@/data/sampleResumeData';
 import {
   Select,
   SelectContent,
@@ -22,6 +23,47 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+/* ─── A4 paper preview wrapper ────────────────────────────────── */
+const A4_W = 794;   // px at 96 dpi
+const A4_H = 1123;  // px at 96 dpi
+
+const A4PreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.6);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setScale(el.offsetWidth / A4_W);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    /* Outer: measures available width */
+    <div ref={containerRef} style={{ width: '100%' }}>
+      {/* Scaled paper container — collapses to exact rendered height */}
+      <div style={{ width: '100%', height: A4_H * scale, position: 'relative' }}>
+        <div
+          style={{
+            width: A4_W,
+            height: A4_H,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12)',
+            background: '#fff',
+            overflow: 'hidden',
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface ResumeData {
   personalInfo: {
     name: string;
@@ -30,6 +72,8 @@ interface ResumeData {
     phone: string;
     location: string;
     summary: string;
+    linkedin?: string;
+    github?: string;
   };
   experience: {
     id: string;
@@ -150,30 +194,18 @@ const Index = () => {
     // When hasResumeId && !isAuthenticated && isAuthLoading: do nothing – wait for auth to settle, then effect runs again
   }, [searchParams, isAuthenticated, isAuthLoading]);
   
-  const initialResumeData: ResumeData = {
-    personalInfo: {
-      name: '',
-      title: '',
-      email: '',
-      phone: '',
-      location: '',
-      summary: '',
-    },
-    experience: [
-      { id: '1', title: '', company: '', location: '', startDate: '', endDate: '', description: '' }
-    ],
-    education: [
-      { id: '1', degree: '', school: '', location: '', startDate: '', endDate: '', description: '' }
-    ],
-    skills: [
-      { id: '1', name: '', level: '80' }
-    ],
-    projects: [
-      { id: '1', name: '', description: '', technologies: '', startDate: '', endDate: '', url: '' }
-    ],
-    achievements: [
-      { id: '1', name: '', description: '', technologies: '', url: '' }
-    ]
+  // Default resume — same content shown in template gallery previews.
+  // New users see a fully filled resume they can overwrite with their own details.
+  const initialResumeData: ResumeData = SAMPLE_RESUME;
+
+  // Blank template for "Create New Resume" — gives user a fresh start
+  const blankResumeData: ResumeData = {
+    personalInfo: { name: '', title: '', email: '', phone: '', location: '', summary: '', linkedin: '', github: '' },
+    experience:   [{ id: '1', title: '', company: '', location: '', startDate: '', endDate: '', description: '' }],
+    education:    [{ id: '1', degree: '', school: '', location: '', startDate: '', endDate: '', description: '' }],
+    skills:       [{ id: '1', name: '', level: '' }],
+    projects:     [{ id: '1', name: '', description: '', technologies: '', startDate: '', endDate: '', url: '' }],
+    achievements: [{ id: '1', name: '', description: '', technologies: '', url: '' }],
   };
   
   const [resumeData, setResumeData] = useState(initialResumeData);
@@ -208,7 +240,7 @@ const Index = () => {
   const handleSelectResume = async (resumeId: string) => {
     if (resumeId === 'new') {
       setCurrentResumeId(undefined);
-      setResumeData(initialResumeData);
+      setResumeData(blankResumeData);
       return;
     }
 
@@ -272,7 +304,7 @@ const Index = () => {
         ...resumeData,
         skills: [
           ...resumeData.skills,
-          { id: `skill-${Date.now()}`, name: value, level: '80' }
+          { id: `skill-${Date.now()}`, name: value, level: '' }
         ]
       });
     } else if (field.startsWith('experience-')) {
@@ -386,32 +418,68 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Right Column: Preview */}
+          {/* Right Column: A4 Preview */}
           {(showPreview || !isMobile) && (
             <div className={`w-full ${showPreview ? 'lg:w-1/2' : 'lg:w-1/3'} animate-fade-in`}>
               <div className="sticky top-24">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-medium">Resume Preview</h2>
+                <div className="flex justify-between items-center mb-3">
+                  <div>
+                    <h2 className="text-base font-semibold">Live Preview</h2>
+                    <p className="text-xs text-muted-foreground">A4 · 210 × 297 mm</p>
+                  </div>
                   <Button variant="outline" size="sm" className="hidden lg:flex items-center gap-1" onClick={togglePreview}>
                     {showPreview ? (
                       <>
                         <EyeOff className="h-4 w-4" />
-                        <span className="hidden md:inline">Hide Preview</span>
+                        <span className="hidden md:inline">Hide</span>
                       </>
                     ) : (
                       <>
                         <Eye className="h-4 w-4" />
-                        <span className="hidden md:inline">Expand Preview</span>
+                        <span className="hidden md:inline">Show</span>
                       </>
                     )}
                   </Button>
                 </div>
-                <div className="bg-gray-100 p-6 rounded-lg">
-                  <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
+                {/* PDF-viewer style container */}
+                <div
+                  style={{
+                    background: '#525659',
+                    borderRadius: '10px',
+                    padding: '20px 16px',
+                    overflowY: 'auto',
+                    maxHeight: 'calc(100vh - 160px)',
+                  }}
+                >
+                  <A4PreviewWrapper>
+                    <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
+                  </A4PreviewWrapper>
                 </div>
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/*
+        Hidden full-resolution resume rendered at true 794 px width (no transform).
+        html2canvas reads this element for PDF export — keeps text crisp and properly spaced.
+        Screen readers and pointer events are disabled; it is visually off-screen.
+      */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          width: 794,
+          zIndex: -1,
+          pointerEvents: 'none',
+          background: '#fff',
+        }}
+      >
+        <div className="resume-print-source">
+          <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
         </div>
       </div>
     </Layout>
