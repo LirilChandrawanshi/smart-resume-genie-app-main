@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Templates from "./pages/Templates";
 import Pricing from "./pages/Pricing";
 import About from "./pages/About";
+import Share from "./pages/Share";
 import NotFound from "./pages/NotFound";
 import AdminGuard from "./components/AdminGuard";
 import AdminLayout from "./components/AdminLayout";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/templates" element={<Templates />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/about" element={<About />} />
+            <Route path="/share" element={<Share />} />
             <Route path="/admin" element={<AdminGuard />}>
               <Route element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />

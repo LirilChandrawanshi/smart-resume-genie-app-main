@@ -64,3 +64,29 @@
   background-color: white;
   color: black;
 }
+
+/* PDF / html2canvas capture: same “page” box as LetterPreviewWrapper inner frame */
+.resume-print-source {
+  width: 816px;
+  height: 1056px;
+  max-width: none !important;
+  overflow: hidden;
+  box-sizing: border-box;
+  background-color: #ffffff !important;
+  color: #0f172a;
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.resume-print-source .resume-preview-wrapper,
+.resume-print-source .resume-preview {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background-color: #ffffff !important;
+  color: inherit;
+}

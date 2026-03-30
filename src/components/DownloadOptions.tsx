@@ -8,6 +8,13 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { resumeApi, pdfApi, Resume } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { encodeSharePayload, isSharePayloadTooLarge } from '@/lib/shareResume';
+import {
+  RESUME_PAGE_WIDTH_MM,
+  RESUME_PAGE_HEIGHT_MM,
+  RESUME_PAGE_WIDTH_PX,
+  RESUME_PAGE_HEIGHT_PX,
+} from '@/lib/resumePageSize';
 
 interface DownloadOptionsProps {
   resumeData: any;
@@ -57,7 +64,8 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
           }
         }
         
-        // Client-side PDF: capture the hidden full-resolution element (no CSS transform distortion)
+        // Capture the hidden Letter frame only (same 816×1056 + overflow as live preview)
+        const printRoot = document.querySelector('.resume-print-portal') as HTMLElement | null;
         const resumeElement = (
           document.querySelector('.resume-print-source') ??
           document.querySelector('.resume-preview')
@@ -67,26 +75,66 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
           throw new Error('Resume preview element not found');
         }
 
-        // Temporarily make the hidden element measurable
-        const prevVisibility = resumeElement.style.visibility;
-        resumeElement.style.visibility = 'visible';
+        const prevPortalVisibility = printRoot?.style.visibility ?? '';
+        const prevPortalPointer = printRoot?.style.pointerEvents ?? '';
+        if (printRoot) {
+          printRoot.style.visibility = 'visible';
+          printRoot.style.pointerEvents = 'none';
+        }
 
         const canvas = await html2canvas(resumeElement, {
-          scale: 1.5,           // 1.5× gives sharp text without bloating the file
+          scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
-          width: 794,           // force A4 width so nothing gets clipped
-          windowWidth: 794,
+          width: RESUME_PAGE_WIDTH_PX,
+          height: RESUME_PAGE_HEIGHT_PX,
+          windowWidth: RESUME_PAGE_WIDTH_PX,
+          windowHeight: RESUME_PAGE_HEIGHT_PX,
+          scrollX: 0,
+          scrollY: 0,
+          x: 0,
+          y: 0,
+          onclone: (clonedDoc) => {
+            const root = clonedDoc.documentElement;
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+            root.style.backgroundColor = '#ffffff';
+            const body = clonedDoc.body;
+            if (body) {
+              body.style.backgroundColor = '#ffffff';
+              body.style.color = '#0f172a';
+            }
+          },
         });
 
-        resumeElement.style.visibility = prevVisibility;
+        if (printRoot) {
+          printRoot.style.visibility = prevPortalVisibility;
+          printRoot.style.pointerEvents = prevPortalPointer;
+        }
 
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'letter',
+        });
 
-        // JPEG at 0.88 quality — sharp text, file stays ≈80–120 KB
-        const imgData = canvas.toDataURL('image/jpeg', 0.88);
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 210 * (canvas.height / canvas.width));
+        const pageW = RESUME_PAGE_WIDTH_MM;
+        const pageH = RESUME_PAGE_HEIGHT_MM;
+        const aspect = canvas.width / canvas.height;
+        const pageAspect = pageW / pageH;
+        let imgW: number;
+        let imgH: number;
+        if (aspect > pageAspect) {
+          imgW = pageW;
+          imgH = pageW / aspect;
+        } else {
+          imgH = pageH;
+          imgW = pageH * aspect;
+        }
+
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
         pdf.save(`${resumeData.personalInfo.name || 'Resume'}.pdf`);
         
         toast({
@@ -111,23 +159,59 @@ const DownloadOptions: React.FC<DownloadOptionsProps> = ({ resumeData, resumeId,
     }
   };
 
-  const handleShare = () => {
-    // Generate a shareable link (in a real app, this would send data to the backend)
-    const shareId = Math.random().toString(36).substring(2, 10);
-    const shareLink = `${window.location.origin}/share/${shareId}`;
-    
-    navigator.clipboard.writeText(shareLink).then(() => {
-      toast({
-        title: "Share link generated",
-        description: "A shareable link has been copied to your clipboard.",
+  const handleShare = async () => {
+    try {
+      const encoded = encodeSharePayload({
+        v: 1,
+        template: selectedTemplate,
+        data: resumeData as Record<string, unknown>,
       });
-    }).catch(() => {
+
+      if (isSharePayloadTooLarge(encoded)) {
+        toast({
+          title: 'Resume too large to share',
+          description:
+            'Shorten long sections or remove entries, then try again. You can still save and export PDF.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const shareLink = `${window.location.origin}/share?d=${encodeURIComponent(encoded)}`;
+
+      const copy = async () => {
+        await navigator.clipboard.writeText(shareLink);
+        toast({
+          title: 'Link copied',
+          description: 'Anyone with the link can open a read-only preview and edit their own copy.',
+        });
+      };
+
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({
+            title: 'Shared resume',
+            text: 'Open this link to view the resume.',
+            url: shareLink,
+          });
+          toast({
+            title: 'Shared',
+            description: 'If you still need the URL, use Share again and copy from your device.',
+          });
+          return;
+        } catch (e) {
+          if ((e as Error).name === 'AbortError') return;
+        }
+      }
+
+      await copy();
+    } catch {
       toast({
-        title: "Sharing failed",
-        description: "Could not copy link to clipboard.",
-        variant: "destructive"
+        title: 'Could not create share link',
+        description: 'Try again or use Save and PDF export instead.',
+        variant: 'destructive',
       });
-    });
+    }
   };
   
   const handleSaveToAccount = async () => {

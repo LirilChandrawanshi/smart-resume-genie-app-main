@@ -10,6 +10,7 @@ import {
   TEMPLATE_META,
 } from './templates';
 import { SAMPLE_RESUME } from '@/data/sampleResumeData';
+import { RESUME_PAGE_WIDTH_PX } from '@/lib/resumePageSize';
 
 interface TemplateSelectorProps {
   selectedTemplate: string;
@@ -17,7 +18,7 @@ interface TemplateSelectorProps {
   currentResumeId?: string;
 }
 
-const PREVIEW_W = 794;
+const PREVIEW_W = RESUME_PAGE_WIDTH_PX;
 
 // Scaled mini resume preview for each template
 const MiniPreview: React.FC<{ templateId: string }> = ({ templateId }) => {

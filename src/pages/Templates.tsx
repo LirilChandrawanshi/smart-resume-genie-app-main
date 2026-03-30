@@ -12,6 +12,7 @@ import {
   TEMPLATE_META,
 } from '@/components/templates';
 import { SAMPLE_RESUME } from '@/data/sampleResumeData';
+import { RESUME_PAGE_WIDTH_PX } from '@/lib/resumePageSize';
 import { Eye, Upload, Zap, Check, X } from 'lucide-react';
 
 const RESUMED_ID_STORAGE_KEY = 'resumeBuilder_currentResumeId';
@@ -19,7 +20,7 @@ const RESUMED_ID_STORAGE_KEY = 'resumeBuilder_currentResumeId';
 // ─────────────────────────────────────────────────────────────────────────────
 // Live scaled template preview (renders the real component, scales it to fit)
 // ─────────────────────────────────────────────────────────────────────────────
-const PREVIEW_W = 794; // standard A4 px width at 96dpi
+const PREVIEW_W = RESUME_PAGE_WIDTH_PX; // Letter width @ 96dpi (21.59 cm)
 
 const TemplatePreview: React.FC<{ templateId: string }> = ({ templateId }) => {
   const containerRef = useRef<HTMLDivElement>(null);

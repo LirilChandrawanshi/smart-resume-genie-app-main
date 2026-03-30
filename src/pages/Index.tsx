@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ResumeForm from '@/components/ResumeForm';
 import ResumePreview from '@/components/ResumePreview';
@@ -15,6 +15,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resumeApi, Resume } from '@/lib/api';
 import { SAMPLE_RESUME } from '@/data/sampleResumeData';
 import {
+  RESUME_PAGE_WIDTH_PX,
+  RESUME_PAGE_HEIGHT_PX,
+  RESUME_PAGE_SIZE_LABEL,
+} from '@/lib/resumePageSize';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -23,18 +28,15 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-/* ─── A4 paper preview wrapper ────────────────────────────────── */
-const A4_W = 794;   // px at 96 dpi
-const A4_H = 1123;  // px at 96 dpi
-
-const A4PreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+/* ─── Letter paper preview wrapper (21.59 × 27.94 cm @ 96dpi) ─── */
+const LetterPreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const update = () => setScale(el.offsetWidth / A4_W);
+    const update = () => setScale(el.offsetWidth / RESUME_PAGE_WIDTH_PX);
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -45,11 +47,11 @@ const A4PreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ children })
     /* Outer: measures available width */
     <div ref={containerRef} style={{ width: '100%' }}>
       {/* Scaled paper container — collapses to exact rendered height */}
-      <div style={{ width: '100%', height: A4_H * scale, position: 'relative' }}>
+      <div style={{ width: '100%', height: RESUME_PAGE_HEIGHT_PX * scale, position: 'relative' }}>
         <div
           style={{
-            width: A4_W,
-            height: A4_H,
+            width: RESUME_PAGE_WIDTH_PX,
+            height: RESUME_PAGE_HEIGHT_PX,
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
             boxShadow: '0 4px 24px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12)',
@@ -116,8 +118,46 @@ interface ResumeData {
   }[];
 }
 
+const BLANK_RESUME_DATA: ResumeData = {
+  personalInfo: { name: '', title: '', email: '', phone: '', location: '', summary: '', linkedin: '', github: '' },
+  experience: [{ id: '1', title: '', company: '', location: '', startDate: '', endDate: '', description: '' }],
+  education: [{ id: '1', degree: '', school: '', location: '', startDate: '', endDate: '', description: '' }],
+  skills: [{ id: '1', name: '', level: '' }],
+  projects: [{ id: '1', name: '', description: '', technologies: '', startDate: '', endDate: '', url: '' }],
+  achievements: [{ id: '1', name: '', description: '', technologies: '', url: '' }],
+};
+
+function mergeSharedResume(raw: unknown, blank: ResumeData): ResumeData {
+  if (!raw || typeof raw !== 'object') return structuredClone(blank);
+  const d = raw as Record<string, unknown>;
+  const pi = (d.personalInfo && typeof d.personalInfo === 'object' ? d.personalInfo : {}) as ResumeData['personalInfo'];
+  return {
+    personalInfo: { ...blank.personalInfo, ...pi },
+    experience:
+      Array.isArray(d.experience) && d.experience.length
+        ? (d.experience as ResumeData['experience'])
+        : structuredClone(blank.experience),
+    education:
+      Array.isArray(d.education) && d.education.length
+        ? (d.education as ResumeData['education'])
+        : structuredClone(blank.education),
+    skills:
+      Array.isArray(d.skills) && d.skills.length ? (d.skills as ResumeData['skills']) : structuredClone(blank.skills),
+    projects:
+      Array.isArray(d.projects) && d.projects.length
+        ? (d.projects as ResumeData['projects'])
+        : structuredClone(blank.projects),
+    achievements:
+      Array.isArray(d.achievements) && d.achievements.length
+        ? (d.achievements as ResumeData['achievements'])
+        : structuredClone(blank.achievements),
+  };
+}
+
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -198,17 +238,23 @@ const Index = () => {
   // New users see a fully filled resume they can overwrite with their own details.
   const initialResumeData: ResumeData = SAMPLE_RESUME;
 
-  // Blank template for "Create New Resume" — gives user a fresh start
-  const blankResumeData: ResumeData = {
-    personalInfo: { name: '', title: '', email: '', phone: '', location: '', summary: '', linkedin: '', github: '' },
-    experience:   [{ id: '1', title: '', company: '', location: '', startDate: '', endDate: '', description: '' }],
-    education:    [{ id: '1', degree: '', school: '', location: '', startDate: '', endDate: '', description: '' }],
-    skills:       [{ id: '1', name: '', level: '' }],
-    projects:     [{ id: '1', name: '', description: '', technologies: '', startDate: '', endDate: '', url: '' }],
-    achievements: [{ id: '1', name: '', description: '', technologies: '', url: '' }],
-  };
-  
   const [resumeData, setResumeData] = useState(initialResumeData);
+
+  // Import resume from /share "Edit in builder" navigation state (one-time)
+  useEffect(() => {
+    const st = location.state as { shareImport?: { data: unknown; template: string } } | null;
+    if (!st?.shareImport?.data) return;
+
+    const merged = mergeSharedResume(st.shareImport.data, BLANK_RESUME_DATA);
+    setResumeData(merged);
+    setSelectedTemplate(st.shareImport.template?.trim() || 'default');
+    setCurrentResumeId(undefined);
+    toast({
+      title: 'Resume loaded from share link',
+      description: 'You can edit and save it to your account.',
+    });
+    navigate('/', { replace: true, state: {} });
+  }, [location.state, navigate, toast]);
 
   // Load saved resumes when user is authenticated
   useEffect(() => {
@@ -240,7 +286,7 @@ const Index = () => {
   const handleSelectResume = async (resumeId: string) => {
     if (resumeId === 'new') {
       setCurrentResumeId(undefined);
-      setResumeData(blankResumeData);
+      setResumeData(structuredClone(BLANK_RESUME_DATA));
       return;
     }
 
@@ -418,14 +464,14 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Right Column: A4 Preview */}
+          {/* Right Column: Letter-size preview */}
           {(showPreview || !isMobile) && (
             <div className={`w-full ${showPreview ? 'lg:w-1/2' : 'lg:w-1/3'} animate-fade-in`}>
               <div className="sticky top-24">
                 <div className="flex justify-between items-center mb-3">
                   <div>
                     <h2 className="text-base font-semibold">Live Preview</h2>
-                    <p className="text-xs text-muted-foreground">A4 · 210 × 297 mm</p>
+                    <p className="text-xs text-muted-foreground">{RESUME_PAGE_SIZE_LABEL}</p>
                   </div>
                   <Button variant="outline" size="sm" className="hidden lg:flex items-center gap-1" onClick={togglePreview}>
                     {showPreview ? (
@@ -451,9 +497,9 @@ const Index = () => {
                     maxHeight: 'calc(100vh - 160px)',
                   }}
                 >
-                  <A4PreviewWrapper>
+                  <LetterPreviewWrapper>
                     <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
-                  </A4PreviewWrapper>
+                  </LetterPreviewWrapper>
                 </div>
               </div>
             </div>
@@ -462,23 +508,28 @@ const Index = () => {
       </div>
 
       {/*
-        Hidden full-resolution resume rendered at true 794 px width (no transform).
-        html2canvas reads this element for PDF export — keeps text crisp and properly spaced.
-        Screen readers and pointer events are disabled; it is visually off-screen.
+        Hidden Letter-sized frame (816×1056) — must match LetterPreviewWrapper inner box
+        so PDF capture layout matches the live preview (same width, height, overflow).
       */}
       <div
         aria-hidden
+        className="resume-print-portal"
         style={{
           position: 'fixed',
-          left: '-9999px',
+          left: '-10000px',
           top: 0,
-          width: 794,
           zIndex: -1,
           pointerEvents: 'none',
-          background: '#fff',
+          visibility: 'hidden',
         }}
       >
-        <div className="resume-print-source">
+        <div
+          className="resume-print-source"
+          style={{
+            width: RESUME_PAGE_WIDTH_PX,
+            height: RESUME_PAGE_HEIGHT_PX,
+          }}
+        >
           <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
         </div>
       </div>
