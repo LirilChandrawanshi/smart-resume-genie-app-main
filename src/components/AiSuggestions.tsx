@@ -182,6 +182,7 @@ const canApplyField = (field: string) =>
 const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySuggestion }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [jobDescription, setJobDescription] = useState('');
   const [scoreResult, setScoreResult] = useState<ATSScoreResult | null>(null);
   const [suggestions, setSuggestions] = useState<(ATSuggestion & { applied: boolean })[]>([]);
   const [activeTab, setActiveTab] = useState<'score' | 'keywords' | 'suggestions'>('score');
@@ -190,8 +191,8 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
     setLoading(true);
     try {
       const [score, atsSuggestions] = await Promise.all([
-        calculateATSScore(resumeData),
-        generateATSSuggestions(resumeData),
+        calculateATSScore(resumeData, jobDescription),
+        generateATSSuggestions(resumeData, jobDescription),
       ]);
       setScoreResult(score);
       setSuggestions(atsSuggestions.map(s => ({ ...s, applied: false })));
@@ -233,6 +234,18 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
           <p className="text-slate-400 text-xs max-w-xs mb-5 leading-relaxed">
             Get an instant ATS compatibility score with a full breakdown — contact, summary, skills, keywords, and experience quality.
           </p>
+          <div className="w-full max-w-md mb-5 text-left">
+            <label className="text-[11px] uppercase tracking-wider font-semibold text-slate-300 block mb-1.5">
+              Optional Job Description
+            </label>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste job description for role-specific ATS scoring..."
+              rows={4}
+              className="w-full rounded-lg border border-indigo-400/30 bg-slate-900/60 text-slate-100 placeholder:text-slate-500 text-xs p-2.5 outline-none focus:ring-2 focus:ring-indigo-400/50"
+            />
+          </div>
 
           {/* Feature pills */}
           <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -269,6 +282,11 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-indigo-500" />
           <span className="font-bold text-sm text-slate-800">ATS Scanner</span>
+          {scoreResult.jdMode && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+              JD Mode
+            </span>
+          )}
           {highCount > 0 && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
               {highCount} urgent

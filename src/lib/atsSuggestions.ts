@@ -42,6 +42,7 @@ export interface ATSScoreResult {
   breakdown: ATSScoreBreakdown;
   foundKeywords: string[];
   missingKeywords: string[];
+  jdMode?: boolean;
 }
 
 // Common ATS-friendly keywords by category
@@ -62,11 +63,65 @@ const COMMON_KEYWORDS = {
   ]
 };
 
+const KEYWORD_SYNONYMS: Record<string, string[]> = {
+  javascript: ['js', 'ecmascript'],
+  typescript: ['ts'],
+  'node.js': ['nodejs', 'node'],
+  'spring boot': ['springboot', 'spring'],
+  kubernetes: ['k8s'],
+  'rest api': ['restful api', 'rest'],
+  mongodb: ['mongo', 'mongo db'],
+  postgresql: ['postgres', 'postgresql db'],
+  'ci/cd': ['cicd', 'continuous integration', 'continuous delivery'],
+};
+
+function tokenizeText(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.\-/\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function extractJDKeywords(jdText: string): string[] {
+  const jd = (jdText || '').toLowerCase();
+  if (!jd.trim()) return [];
+
+  const dictionary = [...COMMON_KEYWORDS.technical, ...COMMON_KEYWORDS.soft];
+  const direct = dictionary.filter((k) => jd.includes(k.toLowerCase()));
+
+  // Grab frequent "skill-like" tokens too, then filter noise
+  const tokens = tokenizeText(jd);
+  const noise = new Set([
+    'and', 'the', 'with', 'for', 'your', 'you', 'our', 'are', 'this', 'that', 'will',
+    'have', 'from', 'into', 'team', 'role', 'years', 'year', 'experience', 'requirements',
+  ]);
+  const freq: Record<string, number> = {};
+  tokens.forEach((t) => {
+    if (t.length < 3 || noise.has(t)) return;
+    freq[t] = (freq[t] || 0) + 1;
+  });
+  const inferred = Object.entries(freq)
+    .filter(([, c]) => c >= 2)
+    .map(([k]) => k)
+    .slice(0, 20);
+
+  return Array.from(new Set([...direct, ...inferred]));
+}
+
+function keywordMatchedInText(keyword: string, text: string): boolean {
+  const t = text.toLowerCase();
+  const k = keyword.toLowerCase();
+  if (t.includes(k)) return true;
+  const syns = KEYWORD_SYNONYMS[k] || [];
+  return syns.some((s) => t.includes(s.toLowerCase()));
+}
+
 /**
  * Analyze resume for ATS-friendly suggestions using rule-based checks
  * Priority: Dataset API → Hugging Face Router API → Rule-based
  */
-export async function generateATSSuggestions(resumeData: any): Promise<ATSuggestion[]> {
+export async function generateATSSuggestions(resumeData: any, jobDescription?: string): Promise<ATSuggestion[]> {
   const suggestions: ATSuggestion[] = [];
 
   // PRIORITY 1: Try dataset-based pattern analysis FIRST (if available)
@@ -207,26 +262,24 @@ export async function generateATSSuggestions(resumeData: any): Promise<ATSuggest
     });
   }
 
-  // 6. Check keyword density
+  // 6. Check keyword density / JD match
   const allText = [
     resumeData.personalInfo?.summary || '',
     ...(resumeData.experience || []).map((e: any) => e.description || '').join(' '),
     ...(resumeData.skills || []).map((s: any) => s.name).join(' ')
   ].join(' ').toLowerCase();
 
-  const uniqueKeywords = new Set(
-    COMMON_KEYWORDS.technical.filter(keyword => 
-      allText.includes(keyword.toLowerCase())
-    )
-  );
+  const jdKeywords = extractJDKeywords(jobDescription || '');
+  const baselineKeywords = jdKeywords.length > 0 ? jdKeywords : COMMON_KEYWORDS.technical;
+  const uniqueKeywords = new Set(baselineKeywords.filter((keyword) => keywordMatchedInText(keyword, allText)));
 
-  if (uniqueKeywords.size < 5 && (resumeData.skills || []).length < 8) {
+  if (uniqueKeywords.size < Math.min(5, baselineKeywords.length) && (resumeData.skills || []).length < 8) {
     suggestions.push({
       field: 'keyword',
-      value: 'Add more industry-relevant keywords',
+      value: jdKeywords.length > 0 ? 'Add more job-description keywords' : 'Add more industry-relevant keywords',
       type: 'keyword',
       priority: 'medium',
-      reason: 'ATS systems match resumes to job descriptions using keywords. Add more relevant technical terms'
+      reason: 'ATS systems match resumes to job descriptions using keywords. Add relevant terms naturally in skills and experience.'
     });
   }
 
@@ -669,7 +722,7 @@ async function calculateDatasetBasedScore(resumeText: string, resumeData: any): 
 /**
  * Calculate ATS score with full per-category breakdown and keyword analysis
  */
-export async function calculateATSScore(resumeData: any): Promise<ATSScoreResult> {
+export async function calculateATSScore(resumeData: any, jobDescription?: string): Promise<ATSScoreResult> {
   const pi = resumeData.personalInfo || {};
   const experience: any[] = resumeData.experience || [];
   const education: any[] = resumeData.education || [];
@@ -733,10 +786,20 @@ export async function calculateATSScore(resumeData: any): Promise<ATSScoreResult
     pi.summary || '', allExpText,
     skills.map(s => `${s.name} ${s.level}`).join(' '),
   ].join(' ').toLowerCase();
-  const foundKeywords = COMMON_KEYWORDS.technical.filter(k => fullText.includes(k.toLowerCase()));
-  const missingKeywords = COMMON_KEYWORDS.technical.filter(k => !fullText.includes(k.toLowerCase())).slice(0, 12);
-  const keywordScore = Math.min(100, foundKeywords.length * 5);
-  if (foundKeywords.length < 8) feedback.push('Include more ATS keywords relevant to your target role');
+  const jdKeywords = extractJDKeywords(jobDescription || '');
+  const keywordPool = jdKeywords.length > 0 ? jdKeywords : COMMON_KEYWORDS.technical;
+  const foundKeywords = keywordPool.filter((k) => keywordMatchedInText(k, fullText));
+  const missingKeywords = keywordPool.filter((k) => !keywordMatchedInText(k, fullText)).slice(0, 12);
+
+  // In JD mode, score by coverage ratio; otherwise keep old count behavior.
+  const keywordScore = jdKeywords.length > 0
+    ? Math.round((foundKeywords.length / Math.max(1, keywordPool.length)) * 100)
+    : Math.min(100, foundKeywords.length * 5);
+  if (jdKeywords.length > 0) {
+    if (keywordScore < 60) feedback.push('Low JD match: include more must-have skills from the job description');
+  } else if (foundKeywords.length < 8) {
+    feedback.push('Include more ATS keywords relevant to your target role');
+  }
 
   /* ── 6. Education (0-100) ── */
   const filledEdu = education.filter(e => e.school || e.degree);
@@ -793,5 +856,6 @@ export async function calculateATSScore(resumeData: any): Promise<ATSScoreResult
     breakdown,
     foundKeywords: foundKeywords.slice(0, 16),
     missingKeywords,
+    jdMode: jdKeywords.length > 0,
   };
 }
