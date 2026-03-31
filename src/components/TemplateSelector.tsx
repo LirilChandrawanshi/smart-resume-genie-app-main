@@ -7,6 +7,10 @@ import { loadCustomTemplates } from '@/lib/latexTemplateParser';
 import {
   ClassicTemplate, ModernTemplate, ExecutiveTemplate,
   MinimalTemplate, CreativeTemplate, ProfessionalTemplate,
+  ATSPlusTemplate, CompactSidebarTemplate, NeoMinimalTemplate, ResearchBlueTemplate,
+  ArrowClassicTemplate,
+  TwoColumnCVTemplate,
+  DeveloperProTemplate,
   TEMPLATE_META,
 } from './templates';
 import { SAMPLE_RESUME } from '@/data/sampleResumeData';
@@ -39,6 +43,13 @@ const MiniPreview: React.FC<{ templateId: string }> = ({ templateId }) => {
     minimalist:   <MinimalTemplate {...props} />,
     creative:     <CreativeTemplate {...props} />,
     professional: <ProfessionalTemplate {...props} />,
+    atsplus:      <ATSPlusTemplate {...props} />,
+    compact:      <CompactSidebarTemplate {...props} />,
+    neominimal:   <NeoMinimalTemplate {...props} />,
+    researchblue: <ResearchBlueTemplate {...props} />,
+    arrowclassic: <ArrowClassicTemplate {...props} />,
+    twocolumncv:  <TwoColumnCVTemplate {...props} />,
+    developerpro: <DeveloperProTemplate {...props} />,
     default:      <ProfessionalTemplate {...props} />,
   };
   const component = map[templateId] ?? map.default;
@@ -94,15 +105,26 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           accentColor: t.accentColor,
           isCustom: true,
         }));
-        setAllTemplates([...api, ...custom]);
+        const localBuiltIns = Object.entries(TEMPLATE_META)
+          .filter(([id]) => id !== 'default')
+          .map(([id, meta]) => ({
+            id,
+            name: meta.label,
+            accentColor: meta.accentColor,
+          }));
+        const merged = new Map<string, { id: string; name: string; accentColor: string; isCustom?: boolean }>();
+        [...localBuiltIns, ...api, ...custom].forEach((t) => merged.set(t.id, t));
+        setAllTemplates(Array.from(merged.values()));
       })
       .catch(() => {
-        setAllTemplates([
-          { id: 'classic',      name: 'Classic',      accentColor: '#1f2937' },
-          { id: 'modern',       name: 'Modern',       accentColor: '#1e293b' },
-          { id: 'professional', name: 'Professional', accentColor: '#4f46e5' },
-          { id: 'creative',     name: 'Creative',     accentColor: '#059669' },
-        ]);
+        const localBuiltIns = Object.entries(TEMPLATE_META)
+          .filter(([id]) => id !== 'default')
+          .map(([id, meta]) => ({
+            id,
+            name: meta.label,
+            accentColor: meta.accentColor,
+          }));
+        setAllTemplates(localBuiltIns);
       });
   }, []);
 

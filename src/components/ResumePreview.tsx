@@ -8,6 +8,13 @@ import {
   MinimalTemplate,
   CreativeTemplate,
   ProfessionalTemplate,
+  ATSPlusTemplate,
+  CompactSidebarTemplate,
+  NeoMinimalTemplate,
+  ResearchBlueTemplate,
+  ArrowClassicTemplate,
+  TwoColumnCVTemplate,
+  DeveloperProTemplate,
 } from './templates';
 
 interface ResumePreviewProps {
@@ -43,6 +50,13 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTempl
     minimalist:   <MinimalTemplate {...props} />,
     creative:     <CreativeTemplate {...props} />,
     professional: <ProfessionalTemplate {...props} />,
+    atsplus:      <ATSPlusTemplate {...props} />,
+    compact:      <CompactSidebarTemplate {...props} />,
+    neominimal:   <NeoMinimalTemplate {...props} />,
+    researchblue: <ResearchBlueTemplate {...props} />,
+    arrowclassic: <ArrowClassicTemplate {...props} />,
+    twocolumncv: <TwoColumnCVTemplate {...props} />,
+    developerpro: <DeveloperProTemplate {...props} />,
     default:      <ProfessionalTemplate {...props} />,
   };
 

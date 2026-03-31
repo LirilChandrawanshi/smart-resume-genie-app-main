@@ -11,6 +11,10 @@ import { loadCustomTemplates } from '@/lib/latexTemplateParser';
 import {
   ClassicTemplate, ModernTemplate, ExecutiveTemplate,
   MinimalTemplate, CreativeTemplate, ProfessionalTemplate,
+  ATSPlusTemplate, CompactSidebarTemplate, NeoMinimalTemplate, ResearchBlueTemplate,
+  ArrowClassicTemplate,
+  TwoColumnCVTemplate,
+  DeveloperProTemplate,
   TEMPLATE_META,
 } from '@/components/templates';
 import { SAMPLE_RESUME } from '@/data/sampleResumeData';
@@ -45,6 +49,13 @@ const TemplatePreview: React.FC<{ templateId: string }> = ({ templateId }) => {
     minimalist:   <MinimalTemplate {...props} />,
     creative:     <CreativeTemplate {...props} />,
     professional: <ProfessionalTemplate {...props} />,
+    atsplus:      <ATSPlusTemplate {...props} />,
+    compact:      <CompactSidebarTemplate {...props} />,
+    neominimal:   <NeoMinimalTemplate {...props} />,
+    researchblue: <ResearchBlueTemplate {...props} />,
+    arrowclassic: <ArrowClassicTemplate {...props} />,
+    twocolumncv:  <TwoColumnCVTemplate {...props} />,
+    developerpro: <DeveloperProTemplate {...props} />,
     default:      <ProfessionalTemplate {...props} />,
   };
   const component = componentMap[templateId] ?? componentMap.default;
@@ -92,6 +103,13 @@ const PreviewModal: React.FC<{
     minimalist:   <MinimalTemplate {...props} />,
     creative:     <CreativeTemplate {...props} />,
     professional: <ProfessionalTemplate {...props} />,
+    atsplus:      <ATSPlusTemplate {...props} />,
+    compact:      <CompactSidebarTemplate {...props} />,
+    neominimal:   <NeoMinimalTemplate {...props} />,
+    researchblue: <ResearchBlueTemplate {...props} />,
+    arrowclassic: <ArrowClassicTemplate {...props} />,
+    twocolumncv:  <TwoColumnCVTemplate {...props} />,
+    developerpro: <DeveloperProTemplate {...props} />,
     default:      <ProfessionalTemplate {...props} />,
   };
 
@@ -245,7 +263,7 @@ export function TemplatesGallery() {
 
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [customTemplates, setCustomTemplates] = useState(() => loadCustomTemplates());
+  const [customTemplates, setCustomTemplates] = useState<Array<ReturnType<typeof loadCustomTemplates>[number]>>([]);
   const [filter, setFilter] = useState<CategoryFilter>('all');
   const [showImporter, setShowImporter] = useState(false);
 
@@ -255,6 +273,9 @@ export function TemplatesGallery() {
       .then((res) => setTemplates(res.templates || []))
       .catch(() => setTemplates([]))
       .finally(() => setLoading(false));
+
+    // Read browser-local custom templates only on client after hydration.
+    setCustomTemplates(loadCustomTemplates());
   }, []);
 
   const handleTemplateAdded = () => setCustomTemplates(loadCustomTemplates());
@@ -276,9 +297,22 @@ export function TemplatesGallery() {
     };
   });
 
+  const localOnlyTemplates = Object.entries(TEMPLATE_META)
+    .filter(([id]) => id !== 'default' && !templates.some((t) => t.id === id))
+    .map(([id, meta]) => ({
+      id,
+      name: meta.label,
+      description: meta.description,
+      category: meta.category,
+      accentColor: meta.accentColor,
+      hasLatex: false,
+      isCustom: false,
+    }));
+
   // Add custom templates
   const allTemplates = [
     ...displayTemplates,
+    ...localOnlyTemplates,
     ...customTemplates.map((t) => ({
       id: t.id,
       name: t.name,
