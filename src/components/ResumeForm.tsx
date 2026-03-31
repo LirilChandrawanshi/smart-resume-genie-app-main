@@ -429,7 +429,7 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ onUpdateResume, initialData }) 
         {/* ════ SKILLS ════ */}
         {activeTab === 'skills' && (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500">Organise skills by category. Comma-separate items — they'll appear as tags in your resume.</p>
+            <p className="text-xs text-slate-500">Organise skills by category. Comma-separate items — they&apos;ll appear as tags in your resume.</p>
             {/* Quick-add chips */}
             <div>
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Quick add a category</p>

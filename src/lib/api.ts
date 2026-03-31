@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
 export interface LoginRequest {
   username: string;
@@ -105,10 +105,23 @@ export const setAuthToken = (token: string): void => {
   localStorage.setItem('token', token);
 };
 
+export function clearAuthCookies(): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = 'token=; Max-Age=0; path=/';
+  document.cookie = 'user=; Max-Age=0; path=/';
+}
+
+export function setAuthCookies(token: string, user: unknown): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `token=${encodeURIComponent(token)}; path=/; SameSite=Strict`;
+  document.cookie = `user=${encodeURIComponent(JSON.stringify(user))}; path=/; SameSite=Strict`;
+}
+
 // Remove auth token from localStorage
 export const removeAuthToken = (): void => {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  clearAuthCookies();
 };
 
 // Get user from localStorage

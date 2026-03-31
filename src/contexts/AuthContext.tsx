@@ -1,5 +1,7 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi, setAuthToken, removeAuthToken, setUser, getUser, LoginRequest, SignupRequest, JwtResponse } from '@/lib/api';
+import { authApi, setAuthToken, removeAuthToken, setUser, getUser, setAuthCookies, LoginRequest, SignupRequest, JwtResponse } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
@@ -37,6 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (storedUser && token) {
       setUserState(storedUser);
+      setAuthCookies(token, storedUser);
     }
     setIsLoading(false);
   }, []);
@@ -54,7 +57,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       setUser(userData);
       setUserState(userData);
-      
+      setAuthCookies(response.token, userData);
+
       toast({
         title: "Login successful",
         description: `Welcome back, ${response.username}!`,

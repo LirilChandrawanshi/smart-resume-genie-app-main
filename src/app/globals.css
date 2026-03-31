@@ -90,3 +90,40 @@
   background-color: #ffffff !important;
   color: inherit;
 }
+
+/* ── Print / Save as PDF ─────────────────────────────────── */
+@media print {
+  @page {
+    size: letter;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Hide every direct child of body EXCEPT the print portal */
+  body > *:not(.resume-print-portal) {
+    display: none !important;
+  }
+
+  /* Show the portal at the top of the page */
+  .resume-print-portal {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 8.5in !important;
+    height: 11in !important;
+    overflow: hidden !important;
+    visibility: visible !important;
+  }
+
+  .resume-print-source {
+    width: 8.5in !important;
+    height: 11in !important;
+    overflow: hidden !important;
+  }
+}

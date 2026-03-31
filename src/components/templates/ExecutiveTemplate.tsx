@@ -95,11 +95,13 @@ export const ExecutiveTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                     {exp.title}{exp.location ? ` · ${exp.location}` : ''}
                   </p>
                   {exp.description && (
-                    <ul style={{ paddingLeft: '14px', margin: 0 }}>
+                    <div style={{ margin: 0 }}>
                       {toLines(exp.description).map((l, j) => (
-                        <li key={j} style={{ fontSize: '10px', color: '#475569', marginBottom: '2px', listStyleType: 'disc' }}>{l}</li>
+                        <div key={j} style={{ fontSize: '10px', color: '#475569', marginBottom: '2px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                          <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   )}
                 </div>
               ) : null
@@ -153,11 +155,13 @@ export const ExecutiveTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                     </span>
                   </div>
                   {proj.description && (
-                    <ul style={{ paddingLeft: '14px', margin: '2px 0 0' }}>
+                    <div style={{ margin: '2px 0 0' }}>
                       {toLines(proj.description).map((l, j) => (
-                        <li key={j} style={{ fontSize: '10px', color: '#475569', marginBottom: '1px', listStyleType: 'disc' }}>{l}</li>
+                        <div key={j} style={{ fontSize: '10px', color: '#475569', marginBottom: '1px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                          <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   )}
                 </div>
               ) : null

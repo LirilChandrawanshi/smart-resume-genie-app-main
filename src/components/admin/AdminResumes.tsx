@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -21,14 +23,17 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Pagination,
   PaginationContent,
@@ -37,90 +42,90 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { adminApi, AdminUserResponse } from '@/lib/api';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { adminApi, AdminResumeResponse, AdminUserResponse, Resume } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Search, Trash2, Edit2, Download } from 'lucide-react';
+import ResumePreview from '@/components/ResumePreview';
+import { Loader2, Trash2, Eye, Download } from 'lucide-react';
 
 const PAGE_SIZE = 10;
-const ROLES_OPTIONS = ['ROLE_USER', 'ROLE_ADMIN'];
 
-const AdminUsers: React.FC = () => {
+const AdminResumes: React.FC = () => {
   const { toast } = useToast();
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState('');
-  const [searchDebounced, setSearchDebounced] = useState('');
-  const [data, setData] = useState<{ content: AdminUserResponse[]; totalElements: number; totalPages: number; number: number } | null>(null);
+  const [filterUserId, setFilterUserId] = useState<string | null>(null);
+  const [users, setUsers] = useState<AdminUserResponse[]>([]);
+  const [data, setData] = useState<{ content: AdminResumeResponse[]; totalElements: number; totalPages: number; number: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [editUser, setEditUser] = useState<AdminUserResponse | null>(null);
-  const [editRoles, setEditRoles] = useState<string[]>([]);
+  const [viewResume, setViewResume] = useState<Resume | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setSearchDebounced(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
+    adminApi.getUsers({ page: 0, size: 200 }).then((res) => setUsers(res.content)).catch(() => {});
+  }, []);
 
-  const loadUsers = useCallback(() => {
+  const loadResumes = useCallback(() => {
     setLoading(true);
     adminApi
-      .getUsers({ page, size: PAGE_SIZE, search: searchDebounced || undefined })
+      .getResumes({ userId: filterUserId || undefined, page, size: PAGE_SIZE })
       .then((res) => setData({ content: res.content, totalElements: res.totalElements, totalPages: res.totalPages, number: res.number }))
-      .catch((err) => setError(err.message || 'Failed to load users'))
+      .catch((err) => setError(err.message || 'Failed to load resumes'))
       .finally(() => setLoading(false));
-  }, [page, searchDebounced]);
+  }, [page, filterUserId]);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    loadResumes();
+  }, [loadResumes]);
 
-  const handleDelete = (id: string) => {
-    setDeleteId(id);
-  };
+  const handleDelete = (id: string) => setDeleteId(id);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     try {
-      await adminApi.deleteUser(deleteId);
-      toast({ title: 'User deleted', description: 'The user has been deleted.' });
+      await adminApi.deleteResume(deleteId);
+      toast({ title: 'Resume deleted', description: 'The resume has been deleted.' });
       setDeleteId(null);
-      loadUsers();
+      loadResumes();
     } catch (err: unknown) {
       toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
     }
   };
 
-  const openEditRoles = (user: AdminUserResponse) => {
-    setEditUser(user);
-    setEditRoles(Array.isArray(user.roles) ? [...user.roles] : []);
-  };
-
-  const saveRoles = async () => {
-    if (!editUser || editRoles.length === 0) return;
+  const handleView = async (id: string) => {
+    setViewLoading(true);
+    setViewResume(null);
     try {
-      await adminApi.updateUserRoles(editUser.id, editRoles);
-      toast({ title: 'Roles updated', description: 'User roles have been updated.' });
-      setEditUser(null);
-      loadUsers();
+      const resume = await adminApi.getResumeById(id);
+      setViewResume(resume);
     } catch (err: unknown) {
       toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setViewLoading(false);
     }
-  };
-
-  const toggleRole = (role: string) => {
-    setEditRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
   };
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      await adminApi.exportUsersCsv();
-      toast({ title: 'Export started', description: 'users.csv download started.' });
+      await adminApi.exportResumesCsv(filterUserId || undefined);
+      toast({ title: 'Export started', description: 'resumes.csv download started.' });
     } catch (err: unknown) {
       toast({ title: 'Export failed', description: (err as Error).message, variant: 'destructive' });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString();
+    } catch {
+      return dateStr;
     }
   };
 
@@ -132,30 +137,52 @@ const AdminUsers: React.FC = () => {
     );
   }
 
-  const users = data?.content ?? [];
+  const resumes = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
   const currentPage = data?.number ?? 0;
 
+  const resumeDataForPreview = viewResume
+    ? {
+        personalInfo: viewResume.personalInfo ?? { name: '', title: '', email: '', phone: '', location: '', summary: '' },
+        experience: viewResume.experience ?? [],
+        education: viewResume.education ?? [],
+        skills: viewResume.skills ?? [],
+        projects: viewResume.projects ?? [],
+        achievements: viewResume.achievements ?? [],
+      }
+    : null;
+
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Users</h2>
+      <h2 className="text-2xl font-bold mb-6">Resumes</h2>
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle>All users</CardTitle>
-              <CardDescription>Registered users and their resume counts</CardDescription>
+              <CardTitle>All resumes</CardTitle>
+              <CardDescription>Saved resumes with owner and template</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by username or email..."
-                  className="pl-8 w-[220px]"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+              <span className="text-sm text-muted-foreground">Filter by user:</span>
+              <Select
+                value={filterUserId ?? 'all'}
+                onValueChange={(v) => {
+                  setFilterUserId(v === 'all' ? null : v);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All users" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All users</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 <span className="ml-1">Export CSV</span>
@@ -173,26 +200,26 @@ const AdminUsers: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Roles</TableHead>
-                    <TableHead className="text-right">Resume count</TableHead>
-                    <TableHead className="w-[120px]">Actions</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Template</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.username}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{Array.isArray(user.roles) ? user.roles.join(', ') : '—'}</TableCell>
-                      <TableCell className="text-right">{user.resumeCount}</TableCell>
+                  {resumes.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.name || 'Untitled'}</TableCell>
+                      <TableCell>{r.ownerUsername}</TableCell>
+                      <TableCell>{r.template || 'default'}</TableCell>
+                      <TableCell>{formatDate(r.updatedAt)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEditRoles(user)}>
-                            <Edit2 className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" onClick={() => handleView(r.id)}>
+                            <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(user.id)}>
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(r.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -201,8 +228,8 @@ const AdminUsers: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
-              {users.length === 0 && (
-                <p className="text-muted-foreground text-center py-6">No users found.</p>
+              {resumes.length === 0 && (
+                <p className="text-muted-foreground text-center py-6">No resumes found.</p>
               )}
               {totalPages > 1 && (
                 <Pagination className="mt-4">
@@ -252,9 +279,9 @@ const AdminUsers: React.FC = () => {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user</AlertDialogTitle>
+            <AlertDialogTitle>Delete resume</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the user and all their resumes. You cannot delete your own account. This action cannot be undone.
+              This will permanently delete this resume. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -266,37 +293,24 @@ const AdminUsers: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
-        <DialogContent>
+      <Dialog open={!!viewResume || viewLoading} onOpenChange={(open) => !open && setViewResume(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Edit roles — {editUser?.username}</DialogTitle>
+            <DialogTitle>View resume</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            {ROLES_OPTIONS.map((role) => (
-              <div key={role} className="flex items-center space-x-2">
-                <Checkbox
-                  id={role}
-                  checked={editRoles.includes(role)}
-                  onCheckedChange={() => toggleRole(role)}
-                />
-                <Label htmlFor={role} className="font-normal cursor-pointer">
-                  {role}
-                </Label>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUser(null)}>
-              Cancel
-            </Button>
-            <Button onClick={saveRoles} disabled={editRoles.length === 0}>
-              Save
-            </Button>
-          </DialogFooter>
+          {viewLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : resumeDataForPreview && viewResume ? (
+            <ScrollArea className="h-[70vh] pr-4">
+              <ResumePreview resumeData={resumeDataForPreview} selectedTemplate={viewResume.template || 'default'} />
+            </ScrollArea>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
   );
 };
 
-export default AdminUsers;
+export default AdminResumes;

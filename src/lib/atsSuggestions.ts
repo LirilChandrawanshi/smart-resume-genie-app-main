@@ -7,7 +7,7 @@ import { OpenAI } from "openai";
 
 // Initialize OpenAI client with Hugging Face Router
 const getHuggingFaceClient = () => {
-  const apiKey = import.meta.env.VITE_HF_TOKEN || '';
+  const apiKey = process.env.NEXT_PUBLIC_HF_TOKEN || '';
   
   if (!apiKey) {
     return null; // Will fall back to rule-based if no API key

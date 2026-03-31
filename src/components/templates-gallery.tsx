@@ -1,6 +1,8 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import Layout from '@/components/Layout';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { templatesApi, TemplateInfo } from '@/lib/api';
@@ -109,7 +111,7 @@ const PreviewModal: React.FC<{
           style={{ backgroundColor: '#0f172a' }}>
           <span className="text-white font-semibold text-sm">{name} — Preview</span>
           <div className="flex gap-2">
-            <Link to={builderUrl}>
+            <Link href={builderUrl}>
               <Button size="sm" style={{ backgroundColor: '#4f46e5', color: '#fff', border: 'none' }}>
                 <Check className="h-3.5 w-3.5 mr-1" /> Use Template
               </Button>
@@ -172,7 +174,7 @@ const TemplateCard: React.FC<{
             >
               <Eye className="h-3.5 w-3.5" /> Preview
             </button>
-            <Link to={builderUrl}>
+            <Link href={builderUrl}>
               <button
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold"
                 style={{ backgroundColor: accentColor }}
@@ -203,7 +205,7 @@ const TemplateCard: React.FC<{
             <p className="font-semibold text-sm text-gray-900">{name}</p>
             <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{description}</p>
           </div>
-          <Link to={builderUrl} tabIndex={-1}>
+          <Link href={builderUrl} tabIndex={-1}>
             <Button
               size="sm"
               className="text-xs h-7 px-3 ml-3 flex-shrink-0"
@@ -232,8 +234,8 @@ const TemplateCard: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 type CategoryFilter = 'all' | 'classic' | 'modern' | 'creative' | 'minimal';
 
-const Templates = () => {
-  const [searchParams] = useSearchParams();
+export function TemplatesGallery() {
+  const searchParams = useSearchParams();
   const resumeIdFromUrl = searchParams.get('resumeId') || '';
   const resumeIdFromStorage =
     typeof sessionStorage !== 'undefined'
@@ -302,7 +304,7 @@ const Templates = () => {
   ];
 
   return (
-    <Layout>
+    <>
       {/* ── Hero ── */}
       <div
         className="w-full py-16 px-4 text-center"
@@ -387,7 +389,7 @@ const Templates = () => {
           <Upload className="h-10 w-10 mx-auto mb-3 text-indigo-400" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Bring your own LaTeX template</h2>
           <p className="text-gray-500 max-w-md mx-auto text-sm mb-6">
-            Upload any <code className="bg-white px-1.5 py-0.5 rounded text-xs border">.tex</code> resume file — or paste the code directly — and we'll generate an exact HTML/CSS replica in seconds.
+            Upload any <code className="bg-white px-1.5 py-0.5 rounded text-xs border">.tex</code> resume file — or paste the code directly — and we&apos;ll generate an exact HTML/CSS replica in seconds.
           </p>
           <Button
             onClick={() => { setShowImporter(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -398,8 +400,6 @@ const Templates = () => {
           </Button>
         </div>
       </div>
-    </Layout>
+    </>
   );
-};
-
-export default Templates;
+}

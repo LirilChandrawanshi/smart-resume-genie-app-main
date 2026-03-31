@@ -1,7 +1,8 @@
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import Layout from '@/components/Layout';
+import { createPortal } from 'react-dom';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import ResumeForm from '@/components/ResumeForm';
 import ResumePreview from '@/components/ResumePreview';
 import AiSuggestions from '@/components/AiSuggestions';
@@ -154,18 +155,26 @@ function mergeSharedResume(raw: unknown, blank: ResumeData): ResumeData {
   };
 }
 
-const Index = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
-  const navigate = useNavigate();
+const SHARE_IMPORT_KEY = 'resumeBuilder_shareImport';
+
+export function HomePage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [showPreview, setShowPreview] = useState(!isMobile);
   const [selectedTemplate, setSelectedTemplate] = useState('default');
   const [currentResumeId, setCurrentResumeId] = useState<string | undefined>();
   const [savedResumes, setSavedResumes] = useState<Resume[]>([]);
   const [isLoadingResumes, setIsLoadingResumes] = useState(false);
+
+  const initialResumeData: ResumeData = SAMPLE_RESUME;
+  const [resumeData, setResumeData] = useState(initialResumeData);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const RESUMED_ID_STORAGE_KEY = 'resumeBuilder_currentResumeId';
   useEffect(() => {
@@ -191,10 +200,11 @@ const Index = () => {
     }
 
     const clearUrlParams = () => {
-      const next = new URLSearchParams(searchParams);
+      const next = new URLSearchParams(searchParams.toString());
       next.delete('template');
       next.delete('resumeId');
-      setSearchParams(next, { replace: true });
+      const q = next.toString();
+      router.replace(q ? `${pathname}?${q}` : pathname);
     };
 
     if (hasResumeId && isAuthenticated) {
@@ -232,29 +242,29 @@ const Index = () => {
       clearUrlParams();
     }
     // When hasResumeId && !isAuthenticated && isAuthLoading: do nothing – wait for auth to settle, then effect runs again
-  }, [searchParams, isAuthenticated, isAuthLoading]);
-  
-  // Default resume — same content shown in template gallery previews.
-  // New users see a fully filled resume they can overwrite with their own details.
-  const initialResumeData: ResumeData = SAMPLE_RESUME;
+  }, [searchParams, isAuthenticated, isAuthLoading, pathname, router, toast]);
 
-  const [resumeData, setResumeData] = useState(initialResumeData);
-
-  // Import resume from /share "Edit in builder" navigation state (one-time)
+  // Import resume from /share via sessionStorage (one-time)
   useEffect(() => {
-    const st = location.state as { shareImport?: { data: unknown; template: string } } | null;
-    if (!st?.shareImport?.data) return;
-
-    const merged = mergeSharedResume(st.shareImport.data, BLANK_RESUME_DATA);
-    setResumeData(merged);
-    setSelectedTemplate(st.shareImport.template?.trim() || 'default');
-    setCurrentResumeId(undefined);
-    toast({
-      title: 'Resume loaded from share link',
-      description: 'You can edit and save it to your account.',
-    });
-    navigate('/', { replace: true, state: {} });
-  }, [location.state, navigate, toast]);
+    try {
+      const raw = sessionStorage.getItem(SHARE_IMPORT_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(SHARE_IMPORT_KEY);
+      const parsed = JSON.parse(raw) as { data: unknown; template: string };
+      if (!parsed?.data) return;
+      const merged = mergeSharedResume(parsed.data, BLANK_RESUME_DATA);
+      setResumeData(merged);
+      setSelectedTemplate(parsed.template?.trim() || 'default');
+      setCurrentResumeId(undefined);
+      toast({
+        title: 'Resume loaded from share link',
+        description: 'You can edit and save it to your account.',
+      });
+      router.replace('/');
+    } catch {
+      /* ignore */
+    }
+  }, [router, toast]);
 
   // Load saved resumes when user is authenticated
   useEffect(() => {
@@ -377,7 +387,7 @@ const Index = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="container px-4 md:px-6 py-8">
         <div className="flex flex-col items-center justify-center mb-8 text-center">
           <div className="inline-flex items-center justify-center p-2 bg-resume-accent rounded-full mb-4">
@@ -507,34 +517,29 @@ const Index = () => {
         </div>
       </div>
 
-      {/*
-        Hidden Letter-sized frame (816×1056) — must match LetterPreviewWrapper inner box
-        so PDF capture layout matches the live preview (same width, height, overflow).
-      */}
-      <div
-        aria-hidden
-        className="resume-print-portal"
-        style={{
-          position: 'fixed',
-          left: '-10000px',
-          top: 0,
-          zIndex: -1,
-          pointerEvents: 'none',
-          visibility: 'hidden',
-        }}
-      >
+      {/* Print portal — rendered directly into <body> so @media print can target it with body > .resume-print-portal */}
+      {mounted && createPortal(
         <div
-          className="resume-print-source"
+          aria-hidden
+          className="resume-print-portal"
           style={{
-            width: RESUME_PAGE_WIDTH_PX,
-            height: RESUME_PAGE_HEIGHT_PX,
+            position: 'fixed',
+            left: '-10000px',
+            top: 0,
+            zIndex: -1,
+            pointerEvents: 'none',
+            visibility: 'hidden',
           }}
         >
-          <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
-        </div>
-      </div>
-    </Layout>
+          <div
+            className="resume-print-source"
+            style={{ width: RESUME_PAGE_WIDTH_PX, height: RESUME_PAGE_HEIGHT_PX }}
+          >
+            <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
-};
-
-export default Index;
+}

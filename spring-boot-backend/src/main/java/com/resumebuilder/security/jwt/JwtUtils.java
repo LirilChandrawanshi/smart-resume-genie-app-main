@@ -50,16 +50,17 @@ public class JwtUtils {
             Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(authToken);
             return true;
-        } catch (SecurityException e) {
-            logger.error("Invalid JWT signature: {}", e.getMessage());
-        } catch (MalformedJwtException e) {
-            logger.error("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            logger.error("JWT token is expired: {}", e.getMessage());
+            logger.debug("JWT expired: {}", e.getMessage());
+        } catch (MalformedJwtException e) {
+            logger.debug("Malformed JWT: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            logger.error("JWT token is unsupported: {}", e.getMessage());
+            logger.debug("Unsupported JWT: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            logger.error("JWT claims string is empty: {}", e.getMessage());
+            logger.debug("Invalid JWT input: {}", e.getMessage());
+        } catch (JwtException e) {
+            // Includes io.jsonwebtoken.security.SignatureException (wrong secret / tampered token)
+            logger.debug("JWT validation failed: {}", e.getMessage());
         }
 
         return false;

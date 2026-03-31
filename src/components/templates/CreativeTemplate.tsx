@@ -121,11 +121,13 @@ export const CreativeTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                             {exp.company}{exp.location ? ` · ${exp.location}` : ''}
                           </p>
                           {exp.description && (
-                            <ul style={{ paddingLeft: '12px', margin: 0 }}>
+                            <div style={{ margin: 0 }}>
                               {toLines(exp.description).map((l, j) => (
-                                <li key={j} style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '1px', listStyleType: 'disc' }}>{l}</li>
+                                <div key={j} style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '1px', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                  <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                           )}
                         </div>
                       </div>

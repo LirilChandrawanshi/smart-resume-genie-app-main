@@ -70,11 +70,13 @@ export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                   </span>
                 </div>
                 {edu.description && (
-                  <ul className="mt-0.5 pl-4" style={{ listStyleType: 'disc' }}>
+                  <div className="mt-0.5 pl-2">
                     {toLines(edu.description).map((l, j) => (
-                      <li key={j} style={{ fontSize: '10.5px' }}>{l}</li>
+                      <div key={j} style={{ fontSize: '10.5px', display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '1px' }}>
+                        <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             ) : null
@@ -100,11 +102,13 @@ export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                   <span style={{ fontStyle: 'italic', fontSize: '10.5px' }}>{exp.location}</span>
                 </div>
                 {exp.description && (
-                  <ul className="mt-0.5 pl-4" style={{ listStyleType: 'disc' }}>
+                  <div className="mt-0.5 pl-2">
                     {toLines(exp.description).map((l, j) => (
-                      <li key={j} style={{ fontSize: '10.5px', marginBottom: '1px' }}>{l}</li>
+                      <div key={j} style={{ fontSize: '10.5px', display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '1px' }}>
+                        <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             ) : null
@@ -133,11 +137,13 @@ export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                   </span>
                 </div>
                 {proj.description && (
-                  <ul className="mt-0.5 pl-4" style={{ listStyleType: 'disc' }}>
+                  <div className="mt-0.5 pl-2">
                     {toLines(proj.description).map((l, j) => (
-                      <li key={j} style={{ fontSize: '10.5px', marginBottom: '1px' }}>{l}</li>
+                      <div key={j} style={{ fontSize: '10.5px', display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '1px' }}>
+                        <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             ) : null
@@ -185,11 +191,13 @@ export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
                   <span style={{ fontSize: '10.5px', fontStyle: 'italic' }}>{ach.technologies}</span>
                 </div>
                 {ach.description && (
-                  <ul className="mt-0.5 pl-4" style={{ listStyleType: 'disc' }}>
+                  <div className="mt-0.5 pl-2">
                     {toLines(ach.description).map((l, j) => (
-                      <li key={j} style={{ fontSize: '10.5px' }}>{l}</li>
+                      <div key={j} style={{ fontSize: '10.5px', display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '1px' }}>
+                        <span style={{ flexShrink: 0 }}>•</span><span>{l}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             ) : null
