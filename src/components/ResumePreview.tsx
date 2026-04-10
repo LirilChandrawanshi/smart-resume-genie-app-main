@@ -1,6 +1,7 @@
 import React from 'react';
 import { getCustomTemplate } from '@/lib/latexTemplateParser';
 import CustomTemplateRenderer from './CustomTemplateRenderer';
+import { type LayoutConfig } from '@/lib/layoutConfig';
 import {
   ClassicTemplate,
   ModernTemplate,
@@ -20,9 +21,10 @@ import {
 interface ResumePreviewProps {
   resumeData: any;
   selectedTemplate?: string;
+  layoutConfig?: LayoutConfig;
 }
 
-const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTemplate = 'default' }) => {
+const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTemplate = 'default', layoutConfig }) => {
   // Custom imported LaTeX template
   const customTemplate = getCustomTemplate(selectedTemplate);
   if (customTemplate) {
@@ -40,10 +42,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resumeData, selectedTempl
   }
 
   const props = { data: resumeData };
+  const classicProps = { data: resumeData, layoutConfig };
 
   const templateMap: Record<string, React.ReactNode> = {
-    classic:      <ClassicTemplate {...props} />,
-    jake:         <ClassicTemplate {...props} />,
+    classic:      <ClassicTemplate {...classicProps} />,
+    jake:         <ClassicTemplate {...classicProps} />,
     modern:       <ModernTemplate {...props} />,
     executive:    <ExecutiveTemplate {...props} />,
     academic:     <ExecutiveTemplate {...props} />,

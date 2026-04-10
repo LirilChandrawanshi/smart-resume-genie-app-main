@@ -51,7 +51,7 @@ export function Navbar() {
                 <path d="M16 15H16.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h1 className="text-xl font-bold">ResumeGenie</h1>
+            <h1 className="text-xl font-bold">Smart Resume Builder</h1>
           </Link>
         </div>
         <nav className="flex items-center gap-4">

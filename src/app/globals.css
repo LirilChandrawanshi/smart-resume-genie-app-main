@@ -65,12 +65,10 @@
   color: black;
 }
 
-/* PDF / html2canvas capture — up to 2 pages */
+/* PDF / html2canvas capture — exact page size, no overflow */
 .resume-print-source {
   width: 816px;
-  min-height: 1056px;
-  max-height: 2112px; /* 2 pages max */
-  height: auto;
+  /* height is set via inline style to RESUME_PAGE_HEIGHT_PX — do NOT override with auto */
   max-width: none !important;
   overflow: hidden;
   box-sizing: border-box;
@@ -118,18 +116,15 @@
     top: 0 !important;
     left: 0 !important;
     width: 8.5in !important;
-    min-height: 11in !important;
-    max-height: 22in !important;
-    height: auto !important;
+    height: 11in !important;
     overflow: hidden !important;
     visibility: visible !important;
   }
 
+  /* Clip to exactly one page — matches preview behaviour */
   .resume-print-source {
     width: 8.5in !important;
-    min-height: 11in !important;
-    max-height: 22in !important;
-    height: auto !important;
+    height: 11in !important;
     overflow: hidden !important;
   }
 }

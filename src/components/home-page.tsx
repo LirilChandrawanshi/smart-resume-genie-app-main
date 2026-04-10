@@ -28,18 +28,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionLayoutPanel } from '@/components/SectionLayoutPanel';
+import { DEFAULT_LAYOUT, type LayoutConfig } from '@/lib/layoutConfig';
 
-/* ─── Letter paper preview wrapper — up to 2 pages ─── */
-const PAGE_GAP = 12;         // px gap between pages (unscaled)
-const PAGE_TOP_PADDING = 28; // px breathing room at top of page 2+ (unscaled)
-
+/* ─── Letter paper preview wrapper — single page only ─── */
 const LetterPreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureRef  = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
-  const [pages, setPages] = useState(1);
+  const [overflows, setOverflows] = useState(false);
 
-  // Track container width → scale
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -50,70 +48,21 @@ const LetterPreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => ro.disconnect();
   }, []);
 
-  // Measure natural content height via off-screen div
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const update = () =>
-      setPages(el.scrollHeight > RESUME_PAGE_HEIGHT_PX ? 2 : 1);
+    const update = () => setOverflows(el.scrollHeight > RESUME_PAGE_HEIGHT_PX + 24);
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Shadow lives on a non-clipping wrapper so it isn't cut off at page edges
   const pageShadow = '0 2px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.18)';
-
-  const renderPage = (pageIndex: number) => (
-    /* Shadow wrapper — must NOT clip so the shadow bleeds naturally */
-    <div style={{ borderRadius: 2, boxShadow: pageShadow }}>
-      {/* Clip box — hides content outside this page's bounds */}
-      <div style={{ overflow: 'hidden', height: RESUME_PAGE_HEIGHT_PX * scale, borderRadius: 2 }}>
-        {/* Scale + position wrapper */}
-        <div
-          style={{
-            width: RESUME_PAGE_WIDTH_PX,
-            height: RESUME_PAGE_HEIGHT_PX,
-            transform: `scale(${scale})`,
-            transformOrigin: 'top left',
-            background: '#fff',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          {pageIndex === 0 ? (
-            <>
-              {children}
-              {/* Gradient fade at the bottom of page 1 so cut-off text isn't visible */}
-              {pages === 2 && (
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0,
-                  height: PAGE_TOP_PADDING + 8,
-                  background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 70%)',
-                  zIndex: 5,
-                  pointerEvents: 'none',
-                }} />
-              )}
-            </>
-          ) : (
-            <>
-              {/* Shift content up by exactly one page — no overlap */}
-              <div style={{ position: 'absolute', top: -(RESUME_PAGE_HEIGHT_PX * pageIndex), left: 0, width: '100%' }}>
-                {children}
-              </div>
-              {/* White top-padding overlay so content doesn't start flush at the edge */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: PAGE_TOP_PADDING, background: '#fff', zIndex: 5, pointerEvents: 'none' }} />
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div ref={containerRef} style={{ width: '100%' }}>
-      {/* Off-screen measurement clone (same width, unconstrained height) */}
+      {/* Off-screen measurement clone */}
       <div
         ref={measureRef}
         aria-hidden
@@ -130,15 +79,46 @@ const LetterPreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ childre
         {children}
       </div>
 
-      {renderPage(0)}
-
-      {pages === 2 && (
-        <>
-          {/* Gap between pages — matches the dark viewer background */}
-          <div style={{ height: PAGE_GAP * scale }} />
-          {renderPage(1)}
-        </>
+      {/* Overflow warning */}
+      {overflows && (
+        <div style={{
+          marginBottom: 10,
+          padding: '8px 12px',
+          background: '#fff7ed',
+          border: '1px solid #fdba74',
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 8,
+        }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>⚠️</span>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#c2410c', margin: 0 }}>
+              Resume exceeds one page
+            </p>
+            <p style={{ fontSize: 11, color: '#9a3412', margin: '2px 0 0' }}>
+              Content beyond the first page will be cut off in the PDF. Shorten your content or use negative spacing to fit everything on one page.
+            </p>
+          </div>
+        </div>
       )}
+
+      <div style={{ borderRadius: 2, boxShadow: pageShadow }}>
+        <div style={{ overflow: 'hidden', height: RESUME_PAGE_HEIGHT_PX * scale, borderRadius: 2 }}>
+          <div
+            style={{
+              width: RESUME_PAGE_WIDTH_PX,
+              height: RESUME_PAGE_HEIGHT_PX,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
+              background: '#fff',
+              overflow: 'hidden',
+            }}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -249,6 +229,7 @@ export function HomePage() {
 
   const initialResumeData: ResumeData = SAMPLE_RESUME;
   const [resumeData, setResumeData] = useState(initialResumeData);
+  const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -548,6 +529,9 @@ export function HomePage() {
               <AiSuggestions resumeData={resumeData} onApplySuggestion={handleApplySuggestion} onApplyTailoredResume={handleApplyTailoredResume} />
               <div className="space-y-6">
                 <TemplateSelector selectedTemplate={selectedTemplate} onSelectTemplate={setSelectedTemplate} currentResumeId={currentResumeId} />
+                {(selectedTemplate === 'classic' || selectedTemplate === 'jake') && (
+                  <SectionLayoutPanel layout={layoutConfig} onChange={setLayoutConfig} />
+                )}
                 <DownloadOptions 
                   resumeData={resumeData} 
                   resumeId={currentResumeId}
@@ -592,7 +576,7 @@ export function HomePage() {
                   }}
                 >
                   <LetterPreviewWrapper>
-                    <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
+                    <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} layoutConfig={layoutConfig} />
                   </LetterPreviewWrapper>
                 </div>
               </div>
@@ -619,7 +603,7 @@ export function HomePage() {
             className="resume-print-source"
             style={{ width: RESUME_PAGE_WIDTH_PX, height: RESUME_PAGE_HEIGHT_PX }}
           >
-            <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} />
+            <ResumePreview resumeData={resumeData} selectedTemplate={selectedTemplate} layoutConfig={layoutConfig} />
           </div>
         </div>,
         document.body
