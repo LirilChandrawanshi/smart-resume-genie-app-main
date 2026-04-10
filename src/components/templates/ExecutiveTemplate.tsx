@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ResumeData } from './types';
+import { MailIcon, PhoneIcon, GitHubIcon, LinkedInIcon, LeetCodeIcon, buildProfileUrl } from './ContactIcons';
 
 const NAVY   = '#0f172a';
 const TEAL   = '#0d9488';
@@ -28,11 +29,15 @@ const SectionHead: React.FC<{ title: string }> = ({ title }) => (
 export const ExecutiveTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
   const { personalInfo: p, experience, education, skills, projects, achievements = [] } = data;
 
-  const contactParts = [
-    p.email, p.phone, p.location,
-    p.linkedin ? `linkedin.com/in/${p.linkedin}` : null,
-    p.github ? `github.com/${p.github}` : null,
-  ].filter(Boolean) as string[];
+  type ContactItem = { label: string; href?: string; icon: React.ReactNode };
+  const contactItems: ContactItem[] = [
+    p.email ? { label: p.email, href: `mailto:${p.email}`, icon: <MailIcon size={10} /> } : null,
+    p.phone ? { label: p.phone, icon: <PhoneIcon size={10} /> } : null,
+    p.location ? { label: p.location, icon: null } : null,
+    p.linkedin ? { label: 'LinkedIn', href: buildProfileUrl('https://linkedin.com/in/', 'linkedin.com', p.linkedin), icon: <LinkedInIcon size={10} /> } : null,
+    p.github ? { label: 'GitHub', href: buildProfileUrl('https://github.com/', 'github.com', p.github), icon: <GitHubIcon size={10} /> } : null,
+    (p as any).leetcode ? { label: 'LeetCode', href: buildProfileUrl('https://leetcode.com/u/', 'leetcode.com', (p as any).leetcode), icon: <LeetCodeIcon size={10} /> } : null,
+  ].filter(Boolean) as ContactItem[];
 
   return (
     <div
@@ -52,13 +57,16 @@ export const ExecutiveTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
             {p.title}
           </p>
         )}
-        {contactParts.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 12px' }}>
-            {contactParts.map((c, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <span style={{ color: TEAL }}>·</span>}
-                <span style={{ fontSize: '9.5px', color: '#cbd5e1' }}>{c}</span>
-              </React.Fragment>
+        {contactItems.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: '9.5px', color: '#cbd5e1' }}>
+            {contactItems.map((item, i) => (
+              item.href ? (
+                <a key={i} href={item.href} style={{ color: '#cbd5e1', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  {item.icon}{item.label}
+                </a>
+              ) : (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{item.icon}{item.label}</span>
+              )
             ))}
           </div>
         )}

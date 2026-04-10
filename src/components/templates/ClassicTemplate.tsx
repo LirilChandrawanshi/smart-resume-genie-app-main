@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ResumeData } from './types';
+import { MailIcon, PhoneIcon, GitHubIcon, LinkedInIcon, LeetCodeIcon, buildProfileUrl } from './ContactIcons';
 
 const toLines = (s: string) =>
   s.split('\n').map((l) => l.replace(/^[\s•\-–]+/, '').trim()).filter(Boolean);
@@ -24,12 +25,14 @@ const SectionHead: React.FC<{ title: string }> = ({ title }) => (
 export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
   const { personalInfo: p, experience, education, skills, projects, achievements = [] } = data;
 
-  const contactParts = [
-    p.phone,
-    p.email,
-    p.linkedin ? `linkedin.com/in/${p.linkedin}` : null,
-    p.github ? `github.com/${p.github}` : null,
-  ].filter(Boolean) as string[];
+  type ContactItem = { label: string; href?: string; icon: React.ReactNode };
+  const contactItems: ContactItem[] = [
+    p.phone ? { label: p.phone, icon: <PhoneIcon size={10} /> } : null,
+    p.email ? { label: p.email, href: `mailto:${p.email}`, icon: <MailIcon size={10} /> } : null,
+    p.linkedin ? { label: 'LinkedIn', href: buildProfileUrl('https://linkedin.com/in/', 'linkedin.com', p.linkedin), icon: <LinkedInIcon size={10} /> } : null,
+    p.github ? { label: 'GitHub', href: buildProfileUrl('https://github.com/', 'github.com', p.github), icon: <GitHubIcon size={10} /> } : null,
+    (p as any).leetcode ? { label: 'LeetCode', href: buildProfileUrl('https://leetcode.com/u/', 'leetcode.com', (p as any).leetcode), icon: <LeetCodeIcon size={10} /> } : null,
+  ].filter(Boolean) as ContactItem[];
 
   return (
     <div
@@ -45,10 +48,23 @@ export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
           {p.name || 'Your Name'}
         </h1>
         {p.location && (
-          <p style={{ fontSize: '10.5px', color: '#444', marginBottom: '2px' }}>{p.location}</p>
+          <p style={{ fontSize: '11px', color: '#444', marginBottom: '2px', fontWeight: 'bold' }}>{p.location}</p>
         )}
-        {contactParts.length > 0 && (
-          <p style={{ fontSize: '10px', color: '#444' }}>{contactParts.join(' | ')}</p>
+        {contactItems.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 10px', fontSize: '10px', color: '#444' }}>
+            {contactItems.map((item, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span style={{ color: '#888' }}>|</span>}
+                {item.href ? (
+                  <a href={item.href} style={{ color: '#444', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    {item.icon}{item.label}
+                  </a>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>{item.icon}{item.label}</span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         )}
       </div>
 
@@ -182,7 +198,7 @@ export const ClassicTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
       {/* ── Achievements ── */}
       {achievements.some((a) => a.name) && (
         <section>
-          <SectionHead title="Leadership / Extracurricular" />
+          <SectionHead title="Achievements / Extracurricular" />
           {achievements.map((ach, i) =>
             ach.name ? (
               <div key={i} style={{ marginBottom: '6px' }}>

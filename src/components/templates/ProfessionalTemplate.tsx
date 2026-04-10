@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ResumeData } from './types';
+import { MailIcon, PhoneIcon, GitHubIcon, LinkedInIcon, LeetCodeIcon, buildProfileUrl } from './ContactIcons';
 
 const INDIGO = '#4f46e5';
 const LIGHT  = '#eef2ff';
@@ -68,11 +69,12 @@ export const ProfessionalTemplate: React.FC<{ data: ResumeData }> = ({ data }) =
             )}
           </div>
           <div style={{ textAlign: 'right' }}>
-            {p.email && <p style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '2px' }}>{p.email}</p>}
-            {p.phone && <p style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '2px' }}>{p.phone}</p>}
             {p.location && <p style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '2px' }}>{p.location}</p>}
-            {p.linkedin && <p style={{ fontSize: '9.5px', color: INDIGO }}>linkedin.com/in/{p.linkedin}</p>}
-            {p.github && <p style={{ fontSize: '9.5px', color: INDIGO }}>github.com/{p.github}</p>}
+            {p.email && <p style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}><MailIcon size={9} /><a href={`mailto:${p.email}`} style={{ color: '#4b5563', textDecoration: 'none' }}>{p.email}</a></p>}
+            {p.phone && <p style={{ fontSize: '9.5px', color: '#4b5563', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}><PhoneIcon size={9} />{p.phone}</p>}
+            {p.linkedin && <p style={{ fontSize: '9.5px', color: INDIGO, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}><LinkedInIcon size={9} /><a href={buildProfileUrl('https://linkedin.com/in/', 'linkedin.com', p.linkedin)} style={{ color: INDIGO, textDecoration: 'none' }}>LinkedIn</a></p>}
+            {p.github && <p style={{ fontSize: '9.5px', color: INDIGO, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}><GitHubIcon size={9} /><a href={buildProfileUrl('https://github.com/', 'github.com', p.github)} style={{ color: INDIGO, textDecoration: 'none' }}>GitHub</a></p>}
+            {(p as any).leetcode && <p style={{ fontSize: '9.5px', color: INDIGO, display: 'flex', alignItems: 'center', gap: '3px' }}><LeetCodeIcon size={9} /><a href={buildProfileUrl('https://leetcode.com/u/', 'leetcode.com', (p as any).leetcode)} style={{ color: INDIGO, textDecoration: 'none' }}>LeetCode</a></p>}
           </div>
         </div>
       </div>

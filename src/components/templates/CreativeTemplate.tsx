@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ResumeData } from './types';
+import { MailIcon, PhoneIcon, GitHubIcon, LinkedInIcon, LeetCodeIcon, buildProfileUrl } from './ContactIcons';
 
 const EMERALD = '#059669';
 const LIGHT   = '#ecfdf5';
@@ -73,11 +74,12 @@ export const CreativeTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
             </p>
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '9.5px', color: '#6b7280' }}>
-            {p.email && <span>✉ {p.email}</span>}
-            {p.phone && <span>☎ {p.phone}</span>}
+            {p.email && <a href={`mailto:${p.email}`} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><MailIcon size={9} />{p.email}</a>}
+            {p.phone && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><PhoneIcon size={9} />{p.phone}</span>}
             {p.location && <span>📍 {p.location}</span>}
-            {p.linkedin && <span>🔗 linkedin.com/in/{p.linkedin}</span>}
-            {p.github && <span>⌨ github.com/{p.github}</span>}
+            {p.linkedin && <a href={buildProfileUrl('https://linkedin.com/in/', 'linkedin.com', p.linkedin)} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><LinkedInIcon size={9} />LinkedIn</a>}
+            {p.github && <a href={buildProfileUrl('https://github.com/', 'github.com', p.github)} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><GitHubIcon size={9} />GitHub</a>}
+            {(p as any).leetcode && <a href={buildProfileUrl('https://leetcode.com/u/', 'leetcode.com', (p as any).leetcode)} style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><LeetCodeIcon size={9} />LeetCode</a>}
           </div>
         </div>
 

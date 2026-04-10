@@ -65,10 +65,12 @@
   color: black;
 }
 
-/* PDF / html2canvas capture: same “page” box as LetterPreviewWrapper inner frame */
+/* PDF / html2canvas capture — up to 2 pages */
 .resume-print-source {
   width: 816px;
-  height: 1056px;
+  min-height: 1056px;
+  max-height: 2112px; /* 2 pages max */
+  height: auto;
   max-width: none !important;
   overflow: hidden;
   box-sizing: border-box;
@@ -116,14 +118,18 @@
     top: 0 !important;
     left: 0 !important;
     width: 8.5in !important;
-    height: 11in !important;
+    min-height: 11in !important;
+    max-height: 22in !important;
+    height: auto !important;
     overflow: hidden !important;
     visibility: visible !important;
   }
 
   .resume-print-source {
     width: 8.5in !important;
-    height: 11in !important;
+    min-height: 11in !important;
+    max-height: 22in !important;
+    height: auto !important;
     overflow: hidden !important;
   }
 }

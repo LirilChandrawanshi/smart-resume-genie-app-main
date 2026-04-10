@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ResumeData } from './types';
+import { MailIcon, PhoneIcon, GitHubIcon, LinkedInIcon, LeetCodeIcon, buildProfileUrl } from './ContactIcons';
 
 const SIDEBAR = '#1e293b';   // slate-800
 const ACCENT  = '#38bdf8';   // sky-400
@@ -76,11 +77,12 @@ export const ModernTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
         {/* Contact */}
         <div style={{ marginBottom: '14px' }}>
           <h2 style={{ fontSize: '9px', fontWeight: 700, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>Contact</h2>
-          {p.email && <p style={{ fontSize: '9px', marginBottom: '3px', wordBreak: 'break-all' }}>✉ {p.email}</p>}
-          {p.phone && <p style={{ fontSize: '9px', marginBottom: '3px' }}>☎ {p.phone}</p>}
+          {p.email && <p style={{ fontSize: '9px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}><MailIcon size={9} /><a href={`mailto:${p.email}`} style={{ color: 'inherit', textDecoration: 'none', wordBreak: 'break-all' }}>{p.email}</a></p>}
+          {p.phone && <p style={{ fontSize: '9px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}><PhoneIcon size={9} />{p.phone}</p>}
           {p.location && <p style={{ fontSize: '9px', marginBottom: '3px' }}>📍 {p.location}</p>}
-          {p.linkedin && <p style={{ fontSize: '9px', marginBottom: '3px', wordBreak: 'break-all' }}>🔗 linkedin.com/in/{p.linkedin}</p>}
-          {p.github && <p style={{ fontSize: '9px', wordBreak: 'break-all' }}>⌨ github.com/{p.github}</p>}
+          {p.linkedin && <p style={{ fontSize: '9px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}><LinkedInIcon size={9} /><a href={buildProfileUrl('https://linkedin.com/in/', 'linkedin.com', p.linkedin)} style={{ color: 'inherit', textDecoration: 'none' }}>LinkedIn</a></p>}
+          {p.github && <p style={{ fontSize: '9px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}><GitHubIcon size={9} /><a href={buildProfileUrl('https://github.com/', 'github.com', p.github)} style={{ color: 'inherit', textDecoration: 'none' }}>GitHub</a></p>}
+          {(p as any).leetcode && <p style={{ fontSize: '9px', display: 'flex', alignItems: 'center', gap: '4px' }}><LeetCodeIcon size={9} /><a href={buildProfileUrl('https://leetcode.com/u/', 'leetcode.com', (p as any).leetcode)} style={{ color: 'inherit', textDecoration: 'none' }}>LeetCode</a></p>}
         </div>
 
         {/* Skills */}

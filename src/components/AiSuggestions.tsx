@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, RefreshCw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { Sparkles, RefreshCw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Zap, Wand2, ArrowRight } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import {
   generateATSSuggestions,
@@ -13,6 +13,13 @@ import {
 interface AiSuggestionsProps {
   resumeData: any;
   onApplySuggestion: (field: string, value: string) => void;
+  onApplyTailoredResume?: (tailoredResume: any) => void;
+}
+
+/* ─── Tailor change item ─────────────────────────────────────────── */
+interface TailorChange {
+  section: string;
+  description: string;
 }
 
 /* ─── Score ring (SVG donut) ─────────────────────────────────────── */
@@ -179,13 +186,16 @@ const BREAKDOWN_LABELS: Array<{ key: keyof ATSScoreBreakdown; label: string; wei
 const canApplyField = (field: string) =>
   field === 'summary' || field === 'skill' || field.startsWith('experience-');
 
-const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySuggestion }) => {
+const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySuggestion, onApplyTailoredResume }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [tailoring, setTailoring] = useState(false);
   const [jobDescription, setJobDescription] = useState('');
   const [scoreResult, setScoreResult] = useState<ATSScoreResult | null>(null);
   const [suggestions, setSuggestions] = useState<(ATSuggestion & { applied: boolean })[]>([]);
   const [activeTab, setActiveTab] = useState<'score' | 'keywords' | 'suggestions'>('score');
+  const [tailorResult, setTailorResult] = useState<{ tailoredResume: any; changes: TailorChange[]; matchScore: number } | null>(null);
+  const [showTailorPanel, setShowTailorPanel] = useState(false);
 
   const analyse = async () => {
     setLoading(true);
@@ -217,6 +227,30 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
     next[index] = { ...next[index], applied: true };
     setSuggestions(next);
     toast({ title: 'Applied!', description: 'Suggestion added to your resume.' });
+  };
+
+  const tailorResume = async () => {
+    if (!jobDescription.trim()) {
+      toast({ title: 'Job description required', description: 'Paste a job description to tailor your resume.', variant: 'destructive' });
+      return;
+    }
+    setTailoring(true);
+    try {
+      const res = await fetch('/api/tailor-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData, jobDescription }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setTailorResult(data);
+      setShowTailorPanel(true);
+      toast({ title: `Resume tailored! Match score: ${data.matchScore}/100`, description: `${data.changes.length} improvements made.` });
+    } catch (err: any) {
+      toast({ title: 'Tailoring failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setTailoring(false);
+    }
   };
 
   /* ── Empty state ── */
@@ -256,16 +290,66 @@ const AiSuggestions: React.FC<AiSuggestionsProps> = ({ resumeData, onApplySugges
             ))}
           </div>
 
-          <button
-            onClick={analyse}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
-          >
-            {loading
-              ? <><RefreshCw className="h-4 w-4 animate-spin" /> Scanning resume…</>
-              : <><Sparkles className="h-4 w-4" /> Scan My Resume</>}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+            <button
+              onClick={analyse}
+              disabled={loading || tailoring}
+              className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
+            >
+              {loading
+                ? <><RefreshCw className="h-4 w-4 animate-spin" /> Scanning…</>
+                : <><Sparkles className="h-4 w-4" /> Scan Resume</>}
+            </button>
+            <button
+              onClick={tailorResume}
+              disabled={tailoring || loading || !jobDescription.trim()}
+              className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg, #059669, #0d9488)', boxShadow: '0 4px 16px rgba(5,150,105,0.4)' }}
+            >
+              {tailoring
+                ? <><RefreshCw className="h-4 w-4 animate-spin" /> Tailoring…</>
+                : <><Wand2 className="h-4 w-4" /> Tailor to JD</>}
+            </button>
+          </div>
+
+          {/* Tailor result panel */}
+          {showTailorPanel && tailorResult && (
+            <div className="w-full max-w-md mt-2 rounded-xl border border-emerald-400/30 bg-slate-900/70 p-4 text-left">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-emerald-300 font-bold text-sm">Tailored Resume Ready</span>
+                </div>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(5,150,105,0.2)', color: '#6ee7b7' }}>
+                  Match {tailorResult.matchScore}/100
+                </span>
+              </div>
+              <div className="space-y-1.5 mb-4 max-h-36 overflow-y-auto">
+                {tailorResult.changes.map((c, i) => (
+                  <div key={i} className="flex gap-2 text-xs text-slate-300">
+                    <ArrowRight className="h-3 w-3 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span><span className="text-emerald-400 font-semibold capitalize">{c.section}:</span> {c.description}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { onApplyTailoredResume?.(tailorResult.tailoredResume); setShowTailorPanel(false); toast({ title: 'Resume updated!', description: 'Your resume has been tailored to the job description.' }); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold text-white"
+                  style={{ background: 'linear-gradient(135deg, #059669, #0d9488)' }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Apply All Changes
+                </button>
+                <button
+                  onClick={() => setShowTailorPanel(false)}
+                  className="px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-slate-600"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

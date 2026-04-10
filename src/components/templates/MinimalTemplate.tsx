@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ResumeData } from './types';
+import { MailIcon, PhoneIcon, GitHubIcon, LinkedInIcon, LeetCodeIcon, buildProfileUrl } from './ContactIcons';
 
 const toLines = (s: string) =>
   s.split('\n').map((l) => l.replace(/^[\s•\-–]+/, '').trim()).filter(Boolean);
@@ -25,13 +26,14 @@ const HR = () => (
 export const MinimalTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
   const { personalInfo: p, experience, education, skills, projects, achievements = [] } = data;
 
-  const contactParts = [
-    p.email,
-    p.phone,
-    p.location,
-    p.linkedin ? `linkedin.com/in/${p.linkedin}` : null,
-    p.github ? `github.com/${p.github}` : null,
-  ].filter(Boolean) as string[];
+  type ContactItem = { label: string; href?: string; icon: React.ReactNode };
+  const contactItems: ContactItem[] = [
+    p.email ? { label: p.email, href: `mailto:${p.email}`, icon: <MailIcon size={9} /> } : null,
+    p.phone ? { label: p.phone, icon: <PhoneIcon size={9} /> } : null,
+    p.linkedin ? { label: 'LinkedIn', href: buildProfileUrl('https://linkedin.com/in/', 'linkedin.com', p.linkedin), icon: <LinkedInIcon size={9} /> } : null,
+    p.github ? { label: 'GitHub', href: buildProfileUrl('https://github.com/', 'github.com', p.github), icon: <GitHubIcon size={9} /> } : null,
+    (p as any).leetcode ? { label: 'LeetCode', href: buildProfileUrl('https://leetcode.com/u/', 'leetcode.com', (p as any).leetcode), icon: <LeetCodeIcon size={9} /> } : null,
+  ].filter(Boolean) as ContactItem[];
 
   return (
     <div
@@ -51,10 +53,18 @@ export const MinimalTemplate: React.FC<{ data: ResumeData }> = ({ data }) => {
           </p>
         )}
         <div style={{ height: '1px', backgroundColor: '#111827', marginBottom: '8px' }} />
-        {contactParts.length > 0 && (
-          <p style={{ fontSize: '9px', color: '#6b7280', lineHeight: 1.6 }}>
-            {contactParts.join('  ·  ')}
-          </p>
+        {contactItems.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '9px', color: '#6b7280' }}>
+            {contactItems.map((item, i) => (
+              item.href ? (
+                <a key={i} href={item.href} style={{ color: '#6b7280', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  {item.icon}{item.label}
+                </a>
+              ) : (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>{item.icon}{item.label}</span>
+              )
+            ))}
+          </div>
         )}
       </div>
 

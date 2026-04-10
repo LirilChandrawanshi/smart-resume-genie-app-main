@@ -8,6 +8,7 @@ export interface ResumeData {
     summary?: string;
     linkedin?: string;
     github?: string;
+    leetcode?: string;
   };
   experience: Array<{
     id?: string;
